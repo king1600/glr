@@ -7,7 +7,7 @@ for a 2 month long programming challenge in the
 ## Goals:
 
 * **Rust-like** - An attempt is made to use syntax similar to rust.
-* **Memory Consumption** - Attention will be payed to memory usage.
+* **Low Memory Consumption** - Attention will be payed to memory usage.
 * **Object Oriented** - The structure is similar to oop langs such as Java or C#.
 * **JIT Compiled** - Code should be compiled to machine code for execution when possible.
 * **Statically Typed** - Types are known at compile time which aids in machine code generation.
@@ -15,10 +15,10 @@ for a 2 month long programming challenge in the
 
 ## Example
 
-```rust,csharp
+```rust
 use std.io as IO;
 
-pub class Program {
+pub struct Program {
     pub fn main(args: [String]) {
         IO.print(args)
     }

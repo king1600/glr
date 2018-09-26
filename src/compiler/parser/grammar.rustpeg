@@ -1,13 +1,144 @@
-// use super::ast::*;
+use super::ast::*;
 // use self::Operator::*;
-// use self::ExprType::*;
+use self::ExprType::*;
+
+pub class_file -> ClassFile<'input> =
+    _ imports:import*
+    _ class:class_def
+    { ClassFile { imports, class } }
+
+// ####################################
+// ## USING DECLARATION
+// ####################################
+
+import -> Using<'input> =
+    _ "use" _ using:import_def ";" { using }
+
+import_def -> Using<'input> =
+    _ name:id _ alias:import_alias? _ { Using::Module(name, alias) }   /
+    _ name:id _ specs:import_specifics _ { Using::Include(name, specs) }
+
+import_alias -> &'input str =
+    _ "as" _ alias:id _ { alias }
+
+import_specifics -> Vec<Using<'input>> =
+    _ "{" specs:(import_def ++ ",") "}" { specs }
 
 // ####################################
 // ## CLASS DECLARATION
 // ####################################
 
-pub test -> Vec<&'input str> =
-    id ++ _
+class_def -> ClassDef<'input> =
+    _ access:access_modifiers
+    _ ctype:class_type
+    _ "{"
+    _ fields:class_field*
+    _ methods:func_def*
+    _ "}"
+    { ClassDef { access, ctype, fields, methods } }
+    
+class_type -> ClassType<'input> =
+    _ "enum" _ ty:class_typing { ClassType::Enum(ty.0, ty.2) }           /
+    _ "trait" _ ty:class_typing { ClassType::Trait(ty.0, ty.1, ty.2) }   /
+    _ "struct" _ ty:class_typing { ClassType::Struct(ty.0, ty.1, ty.2) }
+
+class_typing -> (Type<'input>, Vec<Type<'input>>, Vec<TypeGuard<'input>>) =
+    _ ty:type_def
+    _ inherits:class_inherits?
+    _ guards:type_guards?
+    { (ty, inherits.unwrap_or(Vec::new()), guards.unwrap_or(Vec::new())) }
+
+class_inherits -> Vec<Type<'input>> =
+    _ ":" _ inherits:(type_def ++ ",") { inherits }
+
+class_field -> FieldDef<'input> =
+    enum_field / struct_field
+
+enum_field -> FieldDef<'input> =
+    _ name:id
+    _ "(" types:(type_def ** ",") ")"
+    { FieldDef::Enum(name, types) }
+
+struct_field -> FieldDef<'input> =
+    _ access:access_modifiers
+    _ var:var_def
+    { FieldDef::Field(access, var) }
+
+// ####################################
+// ## FUNCTIONS AND ACCESS MODIFIERS
+// ####################################
+
+func_def -> FuncDef<'input> =
+    _ access:access_modifiers
+    _ name:type_def
+    _ "(" args:(var_def ** ",") ")"
+    _ "->" ret:type_def
+    _ guards:type_guards?
+    _ body:func_body
+    { FuncDef { access, name, ret, args, guards, body } }
+
+func_body -> Option<Vec<Expr<'input>>> =
+    _ ";" _ { None }                                       /
+    _ value:E<expr> _ { Some(vec![value]) }                /
+    _ "{" statements:E<statement>* _ "}" { Some(statements) }
+
+var_def -> VarDef<'input> =
+    _ name:id _ ty:var_type? _ value:var_value? { (name, ty, value) }
+
+var_type -> Type<'input> =
+    _ ":" _ ty:type_def { ty }
+
+var_value -> Expr<'input> =
+    _ "=" _ value:E<expr> { value }
+
+access_modifier -> &'input str =
+    _ modifier:$("pub" / "const" / "static") _ { modifier }
+
+access_modifiers -> i32 = 
+    _ mods:access_modifier* 
+    { mods.into_iter().fold(0, |acc, modifier| acc | access::from(modifier)) }
+
+// ####################################
+// ## TYPE DECLARATION
+// ####################################
+
+type_guards -> Vec<TypeGuard<'input>> =
+    _ "where" _ guards:(type_guard ++ ",") { guards }
+
+type_guard -> TypeGuard<'input> =
+    _ ty:id _ ":" _ types:(type_def ++ "+") { (ty, types) }
+
+type_def -> Type<'input> =
+    type_generic / type_name
+
+type_generic -> Type<'input> =
+    _ name:id
+    _ "<" templates:(type_def ++ ",") ">" 
+    { Type::Generic(name, templates) }
+
+type_name -> Type<'input> =
+    _ "i32" _ { Type::Int32 }   /
+    _ "i64" _ { Type::Int64 }   /
+    _ "f32" _ { Type::Float32 } /
+    _ "f64" _ { Type::Float64 } /
+    _ ty:id _ { Type::Object(ty) }
+
+// ####################################
+// ## STATEMENTS
+// ####################################
+
+statement -> ExprType<'input> =
+    expr
+
+// ####################################
+// ## EXPRESSIONS
+// ####################################
+
+expr -> ExprType<'input> =
+    ident
+
+ident -> ExprType<'input> =
+    _ name:id _ { Id(name) }
 
 // ####################################
 // ## MISCELLANIOUS
@@ -22,5 +153,7 @@ _ =
 
 // wrap a rule:ExprType into an Expr by saving its position
 E<Rule> =
-    start:#position Rule end:#position
-    { (Rule, (start, end)) }
+    _ start:#position
+    rule:Rule
+    end:#position _
+    { (rule, (start, end)) }
