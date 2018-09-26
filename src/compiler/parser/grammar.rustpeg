@@ -109,7 +109,11 @@ type_guard -> TypeGuard<'input> =
     _ ty:id _ ":" _ types:(type_def ++ "+") { (ty, types) }
 
 type_def -> Type<'input> =
-    type_generic / type_name
+    type_array / type_generic / type_name
+
+type_array -> Type<'input> =
+    _ "[" ty:type_def "]"
+    { Type::Array(Box::new(ty)) }
 
 type_generic -> Type<'input> =
     _ name:id

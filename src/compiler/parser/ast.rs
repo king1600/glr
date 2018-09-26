@@ -59,6 +59,7 @@ pub enum Type<'a> {
     Float32,
     Float64,
     Object(&'a str),
+    Array(Box<Type<'a>>),
     Generic(&'a str, Vec<Type<'a>>),
 }
 
