@@ -13,43 +13,23 @@ pub struct ClassFile<'a> {
 }
 
 #[derive(Debug)]
-pub enum Operator {
-    Add,
-    Sub,
-    Div,
-    Mul,
-    Mod,
-    Set,
-    Shr,
-    Shl,
-    Xor,
-    BitOr,
-    BitAnd,
-    BitNot,
-    Equ,
-    Neq,
-    Gt,
-    Gte,
-    Lt,
-    Lte,
-    And,
-    Or,
-    Not,
-}
-
-#[derive(Debug)]
 pub enum ExprType<'a> {
     Int(u64),
     Float(f64),
     Id(&'a str),
     Str(&'a str),
+    Break,
+    Continue,
+    Return(Box<Expr<'a>>),
     Func(FuncDef<'a>),
     Class(ClassDef<'a>),
     Var(Vec<VarDef<'a>>),
     Field(i32, Box<Expr<'a>>),
     Unop(Operator, Box<Expr<'a>>),
+    Index(Box<(Expr<'a>, Expr<'a>)>),
     Call(Box<Expr<'a>>, Vec<Expr<'a>>),
     Binop(Operator, Box<(Expr<'a>, Expr<'a>)>),
+    If(Vec<(Expr<'a>, Vec<Expr<'a>>)>, Option<Vec<Expr<'a>>>),
 }
 
 #[derive(Debug)]
@@ -113,5 +93,39 @@ pub mod access {
             "static" => STATIC,
             _ => 0,
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum Operator {
+    Add,
+    Sub,
+    Div,
+    Mul,
+    Mod,
+    Set,
+    Shr,
+    Shl,
+    Xor,
+    BitOr,
+    BitAnd,
+    BitNot,
+    Equ,
+    Neq,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+    And,
+    Or,
+    Not,
+}
+
+impl<'a> ExprType<'a> {
+    #[inline]
+    pub fn binop(op: Operator, lhs: Expr<'a>, rhs: Expr<'a>) -> Expr<'a> {
+        let (_, (_, end)) = rhs;
+        let (_, (start, _)) = lhs;
+        (ExprType::Binop(op, Box::new((lhs, rhs))), (start, end))
     }
 }

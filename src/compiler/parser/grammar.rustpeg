@@ -1,10 +1,11 @@
 use super::ast::*;
-// use self::Operator::*;
+use self::Operator::*;
 use self::ExprType::*;
 
 pub class_file -> ClassFile<'input> =
     _ imports:import*
     _ class:class_def
+    _ !.
     { ClassFile { imports, class } }
 
 // ####################################
@@ -74,14 +75,9 @@ func_def -> FuncDef<'input> =
     _ "(" args:(var_def ** ",") ")"
     _ "->" ret:type_def
     _ guards:type_guards?
-    _ body:func_body
+    _ body:block
     { FuncDef { access, name, ret, args, guards, body } }
-
-func_body -> Option<Vec<Expr<'input>>> =
-    _ ";" _ { None }                                       /
-    _ value:E<expr> _ { Some(vec![value]) }                /
-    _ "{" statements:E<statement>* _ "}" { Some(statements) }
-
+    
 var_def -> VarDef<'input> =
     _ name:id _ ty:var_type? _ value:var_value? { (name, ty, value) }
 
@@ -89,7 +85,7 @@ var_type -> Type<'input> =
     _ ":" _ ty:type_def { ty }
 
 var_value -> Expr<'input> =
-    _ "=" _ value:E<expr> { value }
+    _ "=" _ value:expr { value }
 
 access_modifier -> &'input str =
     _ modifier:$("pub" / "const" / "static") _ { modifier }
@@ -131,14 +127,105 @@ type_name -> Type<'input> =
 // ## STATEMENTS
 // ####################################
 
-statement -> ExprType<'input> =
+block -> Option<Vec<Expr<'input>>> =
+    _ ";" _ { None }                                       /
+    _ value:expr _ { Some(vec![value]) }                /
+    _ "{" statements:statement* _ "}" { Some(statements) }
+
+statement -> Expr<'input> =
     expr
+
+if_statement -> ExprType<'input> =
+    _ first:if_case<"if">
+    _ elifs:if_case<"elif">*
+    _ last:else_case? {
+        let mut cases = elifs;
+        cases.insert(1, first);
+        If(cases, last)
+    }
+
+// ####################################
+// ## STATEMENT HELPERS
+// ####################################
+
+else_case -> Vec<Expr<'input>> =
+    _ "else" _ body:block
+    { body.unwrap_or(Vec::new()) }
+
+if_case<Keyword> =
+    _ Keyword
+    _ "(" cond:expr ")"
+    _ body:block
+    { (cond, body.unwrap_or(Vec::new())) }
 
 // ####################################
 // ## EXPRESSIONS
 // ####################################
 
-expr -> ExprType<'input> =
+expr -> Expr<'input> =
+    E<if_statement> / 
+    E<call_expr> / E<index_expr> / binary_expr
+
+call_expr -> ExprType<'input> =
+    _ func:expr
+    _ "(" args:(expr ** ",") ")"
+    { Call(Box::new(func), args) }
+
+index_expr -> ExprType<'input> =
+    _ object:expr
+    _ "[" index:expr "]"
+    { Index(Box::new((object, index))) }
+
+binary_expr -> Expr<'input> = #infix<primary_expr> {
+    #R  lhs "=" rhs { ExprType::binop(Set, lhs, rhs) }
+    #L  lhs "||" rhs { ExprType::binop(Or, lhs, rhs) }
+    #L  lhs "&&" rhs { ExprType::binop(And, lhs, rhs) }
+    #L  lhs "|" rhs { ExprType::binop(BitOr, lhs, rhs) }
+    #L  lhs "^" rhs { ExprType::binop(Xor, lhs, rhs) }
+    #L  lhs "&" rhs { ExprType::binop(BitAnd, lhs, rhs) }
+    #L  lhs "==" rhs { ExprType::binop(Equ, lhs, rhs) }
+        lhs "!=" rhs { ExprType::binop(Neq, lhs, rhs) }
+    #L  lhs "<" rhs { ExprType::binop(Lt, lhs, rhs) }
+        lhs ">" rhs { ExprType::binop(Gt, lhs, rhs) }
+        lhs ">=" rhs { ExprType::binop(Lte, lhs, rhs) }
+        lhs "<=" rhs { ExprType::binop(Gte, lhs, rhs) }
+    #L  lhs "<<" rhs { ExprType::binop(Shl, lhs, rhs) }
+        lhs ">>" rhs { ExprType::binop(Shr, lhs, rhs) }
+    #L  lhs "+" rhs { ExprType::binop(Add, lhs, rhs) }
+        lhs "-" rhs { ExprType::binop(Sub, lhs, rhs) }
+    #L  lhs "*" rhs { ExprType::binop(Mul, lhs, rhs) }
+        lhs "/" rhs { ExprType::binop(Div, lhs, rhs) }
+        lhs "%" rhs { ExprType::binop(Mod, lhs, rhs) }
+}
+
+primary_expr -> Expr<'input> =
+    E<literal>             /
+    E<unary_expr>          /
+    E<branch_expr>         /
+    E<ternary_expr>        /
+    _ "(" e:expr ")" _ { e }
+
+unary_expr -> ExprType<'input> =
+    _ "!" e:expr { Unop(Not, Box::new(e)) } /
+    _ "-" e:expr { Unop(Sub, Box::new(e)) } /
+    _ "~" e:expr { Unop(BitNot, Box::new(e)) }
+
+branch_expr -> ExprType<'input> =
+    _ "break"    { Break }    /
+    _ "continue" { Continue } /
+    _ "return" e:expr { Return(Box::new(e)) }
+
+ternary_expr -> ExprType<'input> =
+    _ cond:expr "?"
+    _ if_true:expr ":"
+    _ if_false:expr
+    { If(vec![(cond, vec![if_true])], Some(vec![if_false])) }
+
+// ####################################
+// ## LITERAL EXPRESSIONS
+// ####################################
+
+literal -> ExprType<'input> =
     ident
 
 ident -> ExprType<'input> =
