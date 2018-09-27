@@ -235,14 +235,21 @@ ident -> ExprType<'input> =
 // ## MISCELLANIOUS
 // ####################################
 
-pub id -> &'input str =
+id -> &'input str =
     $([a-zA-Z_$][a-zA-Z_$0-9]+)
 
-// consume zero or more whitespace
 _ = 
-    #quiet<[ \n\r\t]*>
+    #quiet<ignores*>
 
-// wrap a rule:ExprType into an Expr by saving its position
+ignores =
+    "/*" (!"*/" .)* "*/"   /
+    "//" (!end_of_line .)* /
+    #quiet<[ \n\r\t]+>
+
+end_of_line =
+    "\n" / "\r\n" / "\r" /
+    "\u{2028}" / "\u{2029}"
+
 E<Rule> =
     _ start:#position
     rule:Rule
