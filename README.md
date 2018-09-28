@@ -24,3 +24,15 @@ pub struct Program {
     }
 }
 ```
+
+## Building
+
+For building the VM:
+```
+cargo build -p glr --release
+```
+
+For building the Compiler:
+```
+cargo build -p glrc --release
+```

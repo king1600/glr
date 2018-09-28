@@ -1,0 +1,9 @@
+[package]
+name = "glrspec"
+edition = "2018"
+version = "0.1.0"
+authors = ["king1600"]
+
+[dependencies.byteorder]
+version = "1"
+default-features = false

@@ -1,13 +1,17 @@
-[package]
-name = "glr"
-version = "0.1.0"
-build = "build.rs"
-authors = ["king1600"]
+[workspace]
+members = [
+    "glr",
+    "glrc", 
+    "glrspec"
+]
 
 [profile.dev]
 codegen-units = 8
 incremental = true
 overflow-checks = false
 
-[build-dependencies]
-peg = { version = "0.5" }
+[profile.release]
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = false
