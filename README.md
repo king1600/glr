@@ -19,7 +19,7 @@ for a 2 month long programming challenge in the
 use std.io as IO;
 
 pub struct Program {
-    pub fn main(args: [String]) {
+    pub static fn main(args: [String]) {
         IO.print(args)
     }
 }
