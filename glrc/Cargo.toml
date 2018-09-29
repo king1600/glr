@@ -4,6 +4,5 @@ version = "0.1.0"
 authors = ["king1600"]
 
 [dependencies]
-nom        = "4"
-nom_locate = "0.3"
-glrspec    = { path = "../glrspec" }
+lazy_static = "1"
+glrspec = { path = "../glrspec" }
