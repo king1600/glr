@@ -10,4 +10,5 @@ pub type SourceLoc = (usize, usize, usize);
 
 pub enum Error {
     UnterminatedString,
+    UnterminatedComment,
 }
