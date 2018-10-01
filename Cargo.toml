@@ -2,6 +2,7 @@
 members = ["glr", "glrc"]
 
 [profile.dev]
+panic = "abort"
 codegen-units = 8
 incremental = true
 overflow-checks = false
