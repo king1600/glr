@@ -1,9 +1,5 @@
 [workspace]
-members = [
-    "glr",
-    "glrc", 
-    "glrspec"
-]
+members = ["glr", "glrc"]
 
 [profile.dev]
 codegen-units = 8

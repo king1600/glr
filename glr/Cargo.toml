@@ -4,10 +4,6 @@ edition = "2018"
 version = "0.1.0"
 authors = ["king1600"]
 
-[dependencies.glrspec]
-path = "../glrspec"
-default-features = false
-
-[dependencies.libc]
-version = "0.2"
-default-features = false
+[dependencies]
+kernel32-sys = "0.2"
+libc = { version = "0.2", default-features = false }
