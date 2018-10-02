@@ -1,22 +1,41 @@
+pub use self::file_api::*;
 
 pub struct File {
-    pub(super) fd: i32,
-}
-
-impl From<i32> for File {
-    fn from(fd: i32) -> File {
-        File { fd }
-    }
+    pub(super) fd: HANDLE,
 }
 
 impl Drop for File {
-    #[cfg(not(windows))]
     fn drop(&mut self) {
-        unsafe { libc::close(self.fd); }
+        file_api::close_file(self.fd);
     }
+}
 
-    #[cfg(windows)]
-    fn drop(&mut self) {
-        unsafe { kernel32::CloseHandle(self.fd as kernel32::HANDLE); }
+impl From<HANDLE> for File {
+    fn from(handle: HANDLE) -> File {
+        File { fd: handle }
+    }
+}
+
+#[cfg(not(windows))]
+pub mod file_api {
+    use libc::close;
+    pub type HANDLE = libc::c_int;
+    pub const INVALID_HANDLE: HANDLE = -1;
+
+    #[inline]
+    pub fn close_file(fd: HANDLE) {
+        close(fd);
+    }
+}
+
+#[cfg(windows)]
+pub mod file_api {
+    use winapi::um::{winnt, handleapi::{INVALID_HANDLE_VALUE, CloseHandle}};
+    pub type HANDLE = winnt::HANDLE;
+    pub const INVALID_HANDLE: HANDLE = INVALID_HANDLE_VALUE;
+
+    #[inline]
+    pub fn close_file(fd: HANDLE) {
+        unsafe { CloseHandle(fd) };
     }
 }

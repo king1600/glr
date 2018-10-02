@@ -1,19 +1,22 @@
 pub struct Page {
     ptr: *mut u8,
     size: usize,
+    file: bool,
 }
 
 #[cfg(not(windows))]
 mod memory {
-    use super::{Page, super::{CString, file::File}};
+    use super::super::{*, types::*};
 
-    use libc::{mmap, c_void};
-    use libc::{O_RDWR, O_CREAT, O_EXCL};
-    use libc::{shm_open, shm_unlink, ftruncate};
-    use libc::{PROT_EXEC, PROT_READ, PROT_WRITE};
-    use libc::{MAP_FAILED, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FIXED, MAP_HUGETLB, MAP_POPULATE};
+    use libc::{
+        mmap, munmap,
+        shm_open, shm_unlink,
+        PROT_EXEC, PROT_READ, PROT_WRITE,
+        O_RDWR, O_EXCL, O_CREAT, ftruncate,
+        MAP_FAILED, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FIXED, MAP_HUGETLB, MAP_POPULATE,
+    };
 
-    pub fn from_file(file: File, addr: usize, size: usize) -> Option<Page> {
+    pub fn page_from_file(file: File, addr: usize, size: usize) -> Option<Page> {
         let prot = PROT_READ | PROT_WRITE;
         let mut flags = MAP_PRIVATE;
         if addr > 0 { flags |= MAP_FIXED }
@@ -22,6 +25,7 @@ mod memory {
             MAP_FAILED => None,
             ptr => Some(Page {
                 size: size,
+                file: true,
                 ptr: ptr as *mut u8
             })
         }
@@ -33,14 +37,19 @@ mod memory {
             if fd > 0 {
                 shm_unlink(path.c_str());
                 ftruncate(fd, size as i64);
-                Some((fd as i32).into())
+                Some(File::from(fd))
             } else {
                 None
             }
         }
     }
 
-    pub fn alloc(
+    #[inline]
+    pub unsafe fn free_page(page: &Page) {
+        munmap(page.addr as *mut c_void, page.size);
+    }
+
+    pub fn alloc_page(
         addr: usize, size: usize,
         pretouch: bool, executable: bool, large_pages: bool
     ) -> Option<Page> {
@@ -56,6 +65,7 @@ mod memory {
             MAP_FAILED => None,
             ptr => Some(Page {
                 size: size,
+                file: false,
                 ptr: ptr as *mut u8
             })
         }
@@ -64,39 +74,61 @@ mod memory {
 
 #[cfg(windows)]
 mod memory {
-    use super::super::CString;
-    use libc::NULL;
-    use kernel32::{VirtualAlloc, LPVOID};
-    use kernel32::{PAGE_EXECUTE_READWRITE, PAGE_READWRITE};
-    use kernel32::{MEM_COMMIT, MEM_RESERVE, MEM_LARGE_PAGES};
-    use kernel32::{SEC_COMMIT, SEC_LARGE_PAGES, INVALID_HANDLE_VALUE};
-    use kernel32::{CreateFileMapping, MapViewOfFileEx, FILE_MAP_ALL_ACCESS};
+    use super::super::{*, types::*};
+
+    use winapi::um::{
+        winnt::{
+            SEC_COMMIT, SEC_LARGE_PAGES,
+            PAGE_READWRITE, PAGE_EXECUTE_READWRITE,
+            MEM_COMMIT, MEM_RESERVE, MEM_LARGE_PAGES, MEM_RELEASE,
+        },
+        memoryapi::{
+            FILE_MAP_ALL_ACCESS,
+            VirtualAlloc, VirtualFree,
+            CreateFileMappingW, MapViewOfFileEx, UnmapViewOfFile,
+        },
+    };
 
     // addr must be a multiple of system granularity
     #[inline]
-    pub fn from_file(fd: i32, addr: usize, size: usize) -> Option<Page> {
-        match unsafe { MapViewOfFileEx(fd, FILE_MAP_ALL_ACCESS, 0, 0, size, addr) } {
+    pub fn page_from_file(file: File, addr: usize, size: usize) -> Option<Page> {
+        match unsafe { MapViewOfFileEx(file.fd, FILE_MAP_ALL_ACCESS, 0, 0, size, addr as *mut c_void) } {
             NULL => None,
             ptr => Some(Page {
                 size: size,
+                file: true,
                 ptr: ptr as *mut u8,
             })
         }
     }
 
-    pub fn alloc_file(path: &str, size: usize, large_pages: bool) -> Option<File> {
-        let handle = INVALID_HANDLE_VALUE;
+    pub fn alloc_file(_path: &str, size: usize, large_pages: bool) -> Option<File> {
+        let handle = INVALID_HANDLE;
         let mut flags = PAGE_READWRITE | SEC_COMMIT;
         if large_pages { flags |= SEC_LARGE_PAGES }
 
-        match unsafe { CreateFileMapping(handle, NULL, flags, 0, size, NULL) } {
+        let size_low = size as DWORD;
+        let size_high = (size >> 32) as DWORD;
+        let name = NULL as *mut _;
+        let attributes = NULL as *mut _;
+
+        match unsafe { CreateFileMappingW(handle, attributes, flags, size_high, size_low, name) } {
             NULL => None,
-            fd => Some((fd as i32).into()),
+            fd => Some(File::from(fd)),
         }
     }
 
-    pub unsafe fn alloc(
-        addr: usize, size: usize, _flags: i32,
+    #[inline]
+    pub unsafe fn free_page(page: &Page) {
+        if page.file {
+            UnmapViewOfFile(page.ptr as LPVOID);
+        } else {
+            VirtualFree(page.ptr as LPVOID, page.size, MEM_RELEASE);
+        }
+    }
+
+    pub fn alloc_page(
+        addr: usize, size: usize,
         pretouch: bool, executable: bool, large_pages: bool
     ) -> Option<Page> {
         let mut prot = MEM_RESERVE;
@@ -113,6 +145,7 @@ mod memory {
             NULL => None,
             ptr => Some(Page {
                 size: size,
+                file: false,
                 ptr: ptr as *mut u8
             })
         }
