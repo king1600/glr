@@ -1,7 +1,37 @@
+use super::*;
+
 pub struct Page {
-    ptr: *mut u8,
-    size: usize,
-    file: bool,
+    pub(super) ptr: *mut u8,
+    pub(super) size: usize,
+    is_file: bool,
+}
+
+impl Drop for Page {
+    fn drop(&mut self) {
+        unsafe { memory::free_page(self) };
+    }
+}
+
+impl Page {
+    #[inline]
+    pub fn alloc_file(path: &str, size: usize, large_pages: bool) -> Option<File> {
+        memory::alloc_file(path, size, large_pages)
+    }
+
+    #[inline]
+    pub fn with_file(file: &File, addr: usize, size: usize) -> Option<Page> {
+        memory::page_from_file(file, addr as usize, size)
+    }
+
+    #[inline]
+    pub fn alloc(addr: usize, size: usize, large_pages: bool) -> Option<Page> {
+        memory::alloc_page(addr, size, false, large_pages)
+    }
+
+    #[inline]
+    pub fn alloc_executable(addr: usize, size: usize, large_pages: bool) -> Option<Page> {
+        memory::alloc_page(addr, size, true, large_pages)
+    }
 }
 
 #[cfg(not(windows))]
@@ -13,10 +43,10 @@ mod memory {
         shm_open, shm_unlink,
         PROT_EXEC, PROT_READ, PROT_WRITE,
         O_RDWR, O_EXCL, O_CREAT, ftruncate,
-        MAP_FAILED, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FIXED, MAP_HUGETLB, MAP_POPULATE,
+        MAP_FAILED, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FIXED, MAP_HUGETLB,
     };
 
-    pub fn page_from_file(file: File, addr: usize, size: usize) -> Option<Page> {
+    pub fn page_from_file(file: &File, addr: usize, size: usize) -> Option<Page> {
         let prot = PROT_READ | PROT_WRITE;
         let mut flags = MAP_PRIVATE;
         if addr > 0 { flags |= MAP_FIXED }
@@ -25,7 +55,7 @@ mod memory {
             MAP_FAILED => None,
             ptr => Some(Page {
                 size: size,
-                file: true,
+                is_file: true,
                 ptr: ptr as *mut u8
             })
         }
@@ -51,21 +81,20 @@ mod memory {
 
     pub fn alloc_page(
         addr: usize, size: usize,
-        pretouch: bool, executable: bool, large_pages: bool
+        executable: bool, large_pages: bool
     ) -> Option<Page> {
         let mut flags = PROT_READ | PROT_WRITE;    
         let mut prot = MAP_PRIVATE | MAP_ANONYMOUS;
         
         if addr > 0 { prot |= MAP_FIXED }
         if executable { flags |= PROT_EXEC }
-        if pretouch { prot |= MAP_POPULATE }
         if large_pages { prot |= MAP_HUGETLB }
 
         match unsafe { mmap(addr as *mut c_void, size, prot, flags, -1, 0) } {
             MAP_FAILED => None,
             ptr => Some(Page {
                 size: size,
-                file: false,
+                is_file: false,
                 ptr: ptr as *mut u8
             })
         }
@@ -80,7 +109,7 @@ mod memory {
         winnt::{
             SEC_COMMIT, SEC_LARGE_PAGES,
             PAGE_READWRITE, PAGE_EXECUTE_READWRITE,
-            MEM_COMMIT, MEM_RESERVE, MEM_LARGE_PAGES, MEM_RELEASE,
+            MEM_RESERVE, MEM_LARGE_PAGES, MEM_RELEASE,
         },
         memoryapi::{
             FILE_MAP_ALL_ACCESS,
@@ -91,12 +120,12 @@ mod memory {
 
     // addr must be a multiple of system granularity
     #[inline]
-    pub fn page_from_file(file: File, addr: usize, size: usize) -> Option<Page> {
+    pub fn page_from_file(file: &File, addr: usize, size: usize) -> Option<Page> {
         match unsafe { MapViewOfFileEx(file.fd, FILE_MAP_ALL_ACCESS, 0, 0, size, addr as *mut c_void) } {
             NULL => None,
             ptr => Some(Page {
                 size: size,
-                file: true,
+                is_file: true,
                 ptr: ptr as *mut u8,
             })
         }
@@ -120,7 +149,7 @@ mod memory {
 
     #[inline]
     pub unsafe fn free_page(page: &Page) {
-        if page.file {
+        if page.is_file {
             UnmapViewOfFile(page.ptr as LPVOID);
         } else {
             VirtualFree(page.ptr as LPVOID, page.size, MEM_RELEASE);
@@ -129,10 +158,9 @@ mod memory {
 
     pub fn alloc_page(
         addr: usize, size: usize,
-        pretouch: bool, executable: bool, large_pages: bool
+        executable: bool, large_pages: bool
     ) -> Option<Page> {
         let mut prot = MEM_RESERVE;
-        if pretouch { prot |= MEM_COMMIT }
         if large_pages { prot |= MEM_LARGE_PAGES }
 
         let flags = if executable {
@@ -145,7 +173,7 @@ mod memory {
             NULL => None,
             ptr => Some(Page {
                 size: size,
-                file: false,
+                is_file: false,
                 ptr: ptr as *mut u8
             })
         }
