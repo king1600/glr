@@ -1,41 +1,49 @@
-pub use self::file_api::*;
+use self::files::*;
+
+#[cfg(linux)] pub type Handle = i32;
+#[cfg(windows)] pub type Handle = usize;
 
 pub struct File {
-    pub(super) fd: HANDLE,
+    handle: Handle,
+}
+
+impl File {
+    #[inline(always)]
+    pub const fn invalid() -> Handle {
+        -1isize as Handle
+    }
+}
+
+impl From<Handle> for File {
+    fn from(handle: Handle) -> File {
+        File { handle }
+    }
 }
 
 impl Drop for File {
     fn drop(&mut self) {
-        file_api::close_file(self.fd);
+        if self.handle > 2 {
+            unsafe { file_close(self.handle); }
+        }
     }
 }
 
-impl From<HANDLE> for File {
-    fn from(handle: HANDLE) -> File {
-        File { fd: handle }
-    }
-}
+#[cfg(linux)]
+pub mod files {
+    use super::Handle;
 
-#[cfg(not(windows))]
-pub mod file_api {
-    use libc::close;
-    pub type HANDLE = libc::c_int;
-    pub const INVALID_HANDLE: HANDLE = -1;
-
-    #[inline]
-    pub fn close_file(fd: HANDLE) {
-        unsafe { close(fd) };
+    extern "system" {
+        #[link_name = "close"]
+        pub fn file_close(fd: Handle);
     }
 }
 
 #[cfg(windows)]
-pub mod file_api {
-    use winapi::um::{winnt, handleapi::{INVALID_HANDLE_VALUE, CloseHandle}};
-    pub type HANDLE = winnt::HANDLE;
-    pub const INVALID_HANDLE: HANDLE = INVALID_HANDLE_VALUE;
+pub mod files {
+    use super::Handle;
 
-    #[inline]
-    pub fn close_file(fd: HANDLE) {
-        unsafe { CloseHandle(fd) };
+    extern "system" {
+        #[link_name = "CloseHandle"]
+        pub fn file_close(handle: Handle) -> bool;
     }
 }
