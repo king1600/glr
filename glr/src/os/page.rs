@@ -100,7 +100,7 @@ impl Page {
         }
     }
 
-    pub fn from_file(file: &File, addr: usize, size: usize, flags: i32) -> Option<Page> {
+    pub fn from_file(file: &File, addr: usize, size: usize, _flags: i32) -> Option<Page> {
         match unsafe { MapViewOfFileEx(file.fd, FILE_MAP_ALL_ACCESS, 0, 0, size, addr as *mut c_void) } {
             NULL => None,
             ptr => Some(Page {
@@ -137,7 +137,7 @@ impl Page {
         let size_low = size as DWORD;
         let size_high = (size >> 32) as DWORD;
         
-        let mut mapping = SEC_COMMIT | PAGE_READWRITE;
+        let mut mapping = SEC_COMMIT | READWRITE;
         if flags & PAGE_HUGE != 0 { mapping |= SEC_LARGE_PAGES }
 
         match unsafe { CreateFileMappingW(handle, attr, mapping, size_high, size_low, name) } {
