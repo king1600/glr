@@ -5,15 +5,15 @@ pub use self::{page::*, file::*, types::*};
 
 #[cfg(not(windows))]
 pub mod types {
-    pub use libc::{c_void, c_char, PT_NULL as NULL};
+    pub use libc::{c_void, c_char, c_int,PT_NULL as NULL};
 }
 
 #[cfg(windows)]
 pub mod types {
     pub use winapi::{
-        ctypes::{c_void, c_char},
         shared::minwindef::DWORD,
-        um::winnt::{PVOID as LPVOID}
+        um::winnt::{PVOID as LPVOID},
+        ctypes::{c_void, c_char, c_int},
     };
     pub const NULL: LPVOID = 0 as LPVOID;
 }

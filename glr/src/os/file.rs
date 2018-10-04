@@ -24,7 +24,7 @@ pub mod file_api {
 
     #[inline]
     pub fn close_file(fd: HANDLE) {
-        close(fd);
+        unsafe { close(fd) };
     }
 }
 
