@@ -4,7 +4,7 @@ use self::files::*;
 #[cfg(windows)] pub type Handle = usize;
 
 pub struct File {
-    handle: Handle,
+    pub handle: Handle,
 }
 
 impl File {

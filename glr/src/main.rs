@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(const_fn)]
 
 // crate imports
 extern crate panic_abort;

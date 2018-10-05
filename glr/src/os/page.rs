@@ -1,5 +1,5 @@
 use self::paging::*;
-use super::{File, Handle};
+use super::File;
 
 pub const PAGE_EXEC:  u8 = 1 << 0;
 pub const PAGE_READ:  u8 = 1 << 1;
@@ -141,13 +141,13 @@ mod paging {
         if flags & PAGE_PRETOUCH != 0 { mapping |= MEM_COMMIT }
         if flags & PAGE_HUGE != 0 { mapping |= MEM_LARGE_PAGES }
         
-        const protect_flags: u8 = PAGE_EXEC | PAGE_READ | PAGE_WRITE;
-        let protect = match flags & protect_flags {
+        const PROTECT_FLAGS: u8 = PAGE_EXEC | PAGE_READ | PAGE_WRITE;
+        let protect = match flags & PROTECT_FLAGS {
             PAGE_EXEC => PAGE_EXECUTE,
             PAGE_READ => PAGE_READONLY,
             f if f == PAGE_READ | PAGE_EXEC => PAGE_EXECUTE_READ,
             f if f == PAGE_READ | PAGE_WRITE || f == PAGE_WRITE => PAGE_READWRITE,
-            f if f == PAGE_EXEC | PAGE_WRITE || f == protect_flags => PAGE_EXECUTE_READWRITE,
+            f if f == PAGE_EXEC | PAGE_WRITE || f == PROTECT_FLAGS => PAGE_EXECUTE_READWRITE,
             _ => PAGE_NOACCESS,
         };
         
@@ -179,15 +179,25 @@ mod paging {
     }
 
     #[inline]
-    pub unsafe fn page_map_file(path: &str, size: usize, flags: u8) -> Option<File> {
+    pub unsafe fn page_map_file(_path: &str, size: usize, flags: u8) -> Option<File> {
         let (flags, _) = parse_flags(flags);
         let (high, low) = ((size >> 32) as u32, size as u32);
 
-        let mut mappipng = 0;
+        let mut mapping = 0;
         if flags & MEM_LARGE_PAGES != 0 { mapping |= SEC_LARGE_PAGES }
         mapping |= if flags & MEM_COMMIT != 0 { SEC_COMMIT } else { SEC_RESERVE };
 
         match CreateFileMapping(File::invalid(), 0, mapping, high, low, 0) {
+            0 => None,
+            handle => Some(handle.into())
+        }
+    }
+
+    #[inline]
+    pub unsafe fn page_map_from_file(file: &File, addr: usize, size: usize) -> Option<Page> {
+        const FILE_MAP_ALL_ACCESS: u32 = 0xF001F;
+
+        match MapViewOfFileEx(file.handle, FILE_MAP_ALL_ACCESS, 0, 0, size, addr) {
             0 => None,
             ptr => Some(Page {
                 size: size,
@@ -195,10 +205,5 @@ mod paging {
                 flags: PAGE_MAPPED_FILE,
             })
         }
-    }
-
-    #[inline]
-    pub unsafe fn page_map_from_file(file: &File, addr: usize, size: usize) -> Option<Page> {
-        const FILE_MAP_ALL_ACCESS: u32 = 
     }
 }
