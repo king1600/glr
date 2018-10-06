@@ -1,11 +1,9 @@
-# Exclude local build files
-/target/
-
-# Since executable, exclude the lock file
-Cargo.lock
-
-# Exculde any backup files from rustfmt
-**/*.rs.bk
-
-# Exclude history results from GitHistory VSCODE plugin
-/.history/
+build/
+*.a
+*.o
+*.so
+*.lib
+*.dll
+*.exe
+*.pdb
+glr

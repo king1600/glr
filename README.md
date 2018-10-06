@@ -2,37 +2,23 @@
 The Great Language RIIR (Rewrite It In Rust) is a toy language submitted
 for a 2 month long programming challenge in the 
 [Rust Discord](https://bit.ly/rust-community) under
-[#langdev](https://discordapp.com/channels/273534239310479360/490356824420122645)
+[#langdev](https://discordapp.com/channels/273534239310479360/490356824420122645).
+This repo hosts the virtual machine (glr) which executes Great Language Bytecode (glb).
+It was originaly planned to be written in rust, but that slowed down development so switch to C.
 
 ## Goals:
 
-* **Rust-like** - An attempt is made to use syntax similar to rust.
-* **Low Memory Consumption** - Attention will be payed to memory usage.
-* **Object Oriented** - The structure is similar to oop langs such as Java or C#.
+* **Low Memory** - Much attention is payed to memory usage.
+* **Garbage Collected** - Supports multiple garbage collectors.
 * **JIT Compiled** - Code should be compiled to machine code for execution when possible.
-* **Statically Typed** - Types are known at compile time which aids in machine code generation.
-* **Garbage Collected** - The goals include having a multi-threaded garbage collector similar to Java 11's ZGC.
-
-## Example
-
-```rust
-use std.io as IO;
-
-pub struct Program {
-    pub static fn main(args: [String]) {
-        IO.print(args)
-    }
-}
-```
 
 ## Building
 
-For building the VM:
-```
-cargo build -p glr --release
-```
+The code requires python to build because i:
 
-For building the Compiler:
+* couldn't figure out how to support recursive sources in make
+* and couldn't figure out how to change cmake compiler and windows caching
+
 ```
-cargo build -p glrc --release
+python3 build.py release
 ```

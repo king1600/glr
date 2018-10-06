@@ -1,8 +1,0 @@
-[package]
-name = "glr"
-edition = "2018"
-version = "0.1.0"
-authors = ["king1600"]
-
-[dependencies]
-panic-abort = "0.3"
