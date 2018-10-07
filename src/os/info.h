@@ -9,8 +9,6 @@ typedef struct {
     size_t huge_page_size;
 } glr_sysinfo_t;
 
-void glr_sys_info_init();
-
-glr_sysinfo_t* glr_sys_info();
+void glr_sys_info_init(glr_sysinfo_t* info);
 
 #endif // _GLR_INFO_H

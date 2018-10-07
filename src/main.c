@@ -1,8 +1,9 @@
-#include "os/info.h"
-#include <stdio.h>
+#include "vm/vm.h"
 
 int main(int argc, char* argv[]) {
-    glr_sys_info_init();
+    glr_vm_t vm;
+
+    glr_vm_init(&vm);
     
     return 0;
 }
