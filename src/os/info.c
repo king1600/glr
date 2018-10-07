@@ -1,14 +1,19 @@
 #include "info.h"
 
+static glr_sysinfo_t __glr_sys_info;
+
+glr_sysinfo_t* glr_sys_info() {
+    return &__glr_sys_info;
+}
 
 #ifdef GLR_WINDOWS
     void glr_sys_info_init() {
         SYSTEM_INFO info;
         GetSystemInfo(&info);
         
-        GLR_SYS_INFO.page_size = info.dwPageSize;
-        GLR_SYS_INFO.num_cpus = info.dwNumberOfProcessors;
-        GLR_SYS_INFO.huge_page_size = GetLargePageMinimum();    
+        __glr_sys_info.page_size = info.dwPageSize;
+        __glr_sys_info.num_cpus = info.dwNumberOfProcessors;
+        __glr_sys_info.huge_page_size = GetLargePageMinimum();    
     }
 
 #else
@@ -19,15 +24,17 @@
     #include <sys/sysinfo.h>
 
     void glr_sys_info_init() {
-        GLR_SYS_INFO.huge_page_size = 0;
-        GLR_SYS_INFO.num_cpus = get_nprocs();
-        GLR_SYS_INFO.page_size = getpagesize();
+        __glr_sys_info.huge_page_size = 0;
+        __glr_sys_info.num_cpus = get_nprocs();
+        __glr_sys_info.page_size = getpagesize();
 
         FILE* proc;
         char line[0xff] = { 0 };
-        if ((proc = fopen("/proc/meminfo", "r")))
-            while (fgets(line, sizeof(line) -1, proc))
+        if ((proc = fopen("/proc/meminfo", "r"))) {
+            while (fgets(line, sizeof(line) - 1, proc))
                 if (strstr(line, "Hugepagesize:"))
-                    GLR_SYS_INFO.huge_page_size = strtol(line + 13, 0, 10) * 1024;
+                    __glr_sys_info.huge_page_size = strtol(line + 13, 0, 10) * 1024;
+            fclose(proc);
+        }
     }
 #endif
