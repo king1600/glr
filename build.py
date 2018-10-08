@@ -29,7 +29,7 @@ def get_config():
     return {
         'Linux': dict(default, **{
             'bin': 'glr',
-            'libs': ['-pthread']
+            'libs': ['-pthread', '-lrt']
         }),
         'Windows': dict(default, **{
             'bin': 'glr.exe',

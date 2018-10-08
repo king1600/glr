@@ -1,7 +1,7 @@
 #ifndef _GLR_CLASSFILE_H
 #define _GLR_CLASSFILE_H
 
-#include "vm.h"
+#include "../vm.h"
 
 // class header -> class type (bottom 2 bits)
 #define GLR_CLASS_ENUM   0
@@ -19,6 +19,19 @@
 #define GLR_FUNC_TCALL 1  // interpreter tail call
 #define GLR_FUNC_VCALL 2  // interpreter virtual call
 #define GLR_FUNC_JCALL 3  // interpreter jit call
+
+typedef struct {
+    uint8_t type;
+    union {
+        double f64;
+        int64_t i64;
+        uint64_t u64;
+        struct {
+            char* text;
+            size_t size;
+        } string;
+    } data;
+} glr_const_t;
 
 typedef struct glr_type_t {
     uint16_t type;
@@ -58,18 +71,8 @@ typedef struct {
 } glr_classfile_t;
 
 typedef struct {
-    uintptr_t end;
-    union {
-        uint8_t* u8;
-        uint16_t* u16;
-        uint32_t* u32;
-        uint64_t* u64;
-        int32_t* i32;
-        int64_t* i64;
-        float* f32;
-        double* f64;
-    } pos;
-} glr_reader_t;
+    int x;
+} glr_class_loader_t;
 
 typedef enum {
     GLR_CLASS_ERR_MAGIC      = 0,
