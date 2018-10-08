@@ -1,19 +1,26 @@
-#include "classfile.h"
+#include "classfile.h"                         
 
-typedef struct {
-    uintptr_t end;
-    union {
-        uint8_t* u8;
-        uint16_t* u16;
-        uint32_t* u32;
-        uint64_t* u64;
-        int32_t* i32;
-        int64_t* i64;
-        float* f32;
-        double* f64;
-    } pos;
-} glr_reader_t;
+uintptr_t glr_class_load(glr_vm_t* vm, uint8_t* bytes, size_t size) {
+    glr_reader_t reader;
+    reader.pos.u8 = bytes;
+    reader.end = bytes + size;
 
-glr_class_result glr_class_load(glr_vm_t* vm, uint8_t* bytes, size_t size) {
+    // check bytecode magic "$GLR"
+    static const char* GLR_MAGIC = "$GLR";
+    GLR_READ(reader, u32, uint32_t magic, GLR_CLASS_ERR_MAGIC);
+    if (magic != *((const uint32_t*) GLR_MAGIC))
+        return GLR_CLASS_ERR_MAGIC;
+
+    // check bytecode version
+    GLR_READ(reader, u8, uint8_t version, GLR_CLASS_ERR_VERSION);
+    if (version < GLR_VERSION)
+        return GLR_CLASS_ERR_VERSION;
+
+    // check bytecode access modifiers
+    GLR_READ(reader, u8, uint8_t access, GLR_CLASS_ERR_ACCESS):
+    if (access == 0)
+        return GLR_CLASS_ERR_ACCESS;
+    
+
     return GLR_CLASS_ERROR;
 }

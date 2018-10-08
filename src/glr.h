@@ -5,4 +5,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define GLR_VERSION 1
+
 #endif // _GLR_H
