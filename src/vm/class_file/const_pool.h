@@ -1,7 +1,7 @@
 #ifndef _GLR_CONSTPOOL_H
 #define _GLR_CONSTPOOL_H
 
-#include "../vm.h"
+#include "../../os/sys.h"
 
 typedef struct {
     uintptr_t end;
@@ -17,8 +17,10 @@ typedef struct {
     } pos;
 } glr_reader_t;
 
+#define GLR_READ_LEN(reader) \
+    (((uint8_t*) (reader).end) - ((reader).pos.u8))
 #define GLR_READ(reader, field, var, error)                    \
-    if (reader.end - reader.pos.u8 < sizeof(reader.pos.field)) \
+    if (GLR_READ_LEN(reader) < sizeof(reader.pos.field)) \
         return error;                                          \
     var = *reader.pos.field++;
 
@@ -28,15 +30,17 @@ typedef struct {
 #define GLR_CONST_STR 3
 
 typedef struct {
+    char* text;
+    size_t size;
+} glr_string_t;
+
+typedef struct {
     uint8_t type;
     union {
         double f64;
         int64_t i64;
         uint64_t u64;
-        struct {
-            char* text;
-            size_t size;
-        } string;
+        glr_string_t string;
     } data;
 } glr_const_t;
 

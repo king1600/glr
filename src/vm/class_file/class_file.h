@@ -1,7 +1,8 @@
 #ifndef _GLR_CLASSFILE_H
 #define _GLR_CLASSFILE_H
 
-#include "constpool.h"
+#include "const_pool.h"
+#include "../../os/info.h"
 
 // class header -> class type (bottom 2 bits)
 #define GLR_CLASS_ENUM   0
@@ -37,8 +38,8 @@ typedef struct glr_field_t {
 
 typedef struct glr_method_t {
     uint8_t access;
-    uint8_t call_type;
-    uint16_t name;
+    glr_string_t* call_type;
+    glr_string_t* name;
     glr_type_t* args;
     uint8_t* code;
     struct glr_method_t* next;
@@ -46,15 +47,19 @@ typedef struct glr_method_t {
 
 typedef struct {
     uint8_t header;
-    uint16_t name;
+    size_t next_class;
+    glr_string_t* name;
     glr_field_t* fields;
     glr_method_t* methods;
     glr_const_pool_t const_pool;
 } glr_classfile_t;
 
 typedef struct {
-    int x;
-} glr_class_loader_t;
+    size_t size;
+    size_t capacity;
+    glr_sysinfo_t* info;
+    glr_classfile_t** classes;
+} glr_classloader_t;
 
 typedef enum {
     GLR_CLASS_ERR_MAGIC      = 0,
@@ -65,8 +70,14 @@ typedef enum {
     GLR_CLASS_ERR_FIELD_LEN  = 5,
     GLR_CLASS_ERR_METHOD_LEN = 6,
     GLR_CLASS_ERROR = 0xff
-} glr_class_result;   
+} glr_class_result;
 
-uintptr_t glr_class_load(glr_vm_t* vm, uint8_t* bytes, size_t size);
+void glr_class_init(glr_classloader_t* loader, glr_sysinfo_t* info);
+
+uintptr_t glr_class_load(glr_classloader_t* loader, uint8_t* bytes, size_t size);
+
+void glr_class_insert(glr_classloader_t* loader, glr_classfile_t* class_file);
+
+glr_classfile_t* glr_class_find(glr_classloader_t* loader, glr_string_t* class_name);
 
 #endif // _GLR_CLASSFILE_H

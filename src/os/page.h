@@ -11,6 +11,16 @@
 
 // Virtual Memory Functions
 
+#define GLR_PAGE_OFFSET(base, offset) \
+    ((void*) ((base) + (offset)))
+
+#define GLR_PAGE_ALLOC(var, base, offset, size, type)   \
+    var = glr_page_alloc(GLR_PAGE_OFFSET(base, offset), \
+                size,  GLR_PAGE_READ | GLR_PAGE_WRITE); \
+    GLR_ASSERT((var) = GLR_PAGE_OFFSET(base, offset),   \
+        "Failed to map data for " type)
+
+
 bool glr_page_free(void* addr, size_t size);
 
 bool glr_page_release(void* addr, size_t size);

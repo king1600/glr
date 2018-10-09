@@ -22,7 +22,7 @@ def get_config():
             'ld': '',
         },
         'release': {
-            'cc': '-g -Wall -Ofast -march=native',
+            'cc': '-g -Wall -O3 -march=native',
             'ld': '-O3',
         }
     }

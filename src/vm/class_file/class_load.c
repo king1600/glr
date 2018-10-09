@@ -1,9 +1,9 @@
-#include "classfile.h"                         
+#include "class_file.h"                         
 
-uintptr_t glr_class_load(glr_vm_t* vm, uint8_t* bytes, size_t size) {
+uintptr_t glr_class_load(glr_classloader_t* loader, uint8_t* bytes, size_t size) {
     glr_reader_t reader;
     reader.pos.u8 = bytes;
-    reader.end = bytes + size;
+    reader.end = (uintptr_t) bytes + size;
 
     // check bytecode magic "$GLR"
     static const char* GLR_MAGIC = "$GLR";
@@ -17,7 +17,7 @@ uintptr_t glr_class_load(glr_vm_t* vm, uint8_t* bytes, size_t size) {
         return GLR_CLASS_ERR_VERSION;
 
     // check bytecode access modifiers
-    GLR_READ(reader, u8, uint8_t access, GLR_CLASS_ERR_ACCESS):
+    GLR_READ(reader, u8, uint8_t access, GLR_CLASS_ERR_ACCESS);
     if (access == 0)
         return GLR_CLASS_ERR_ACCESS;
     
