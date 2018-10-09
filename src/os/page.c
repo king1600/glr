@@ -8,7 +8,6 @@ typedef struct {
 #define GLR_PAGE_PROTECT (GLR_PAGE_EXEC | GLR_PAGE_READ | GLR_PAGE_WRITE)
 
 #ifdef GLR_WINDOWS
-
     // GLR_PAGE_* flags To System Flags Conversion
         
     inline DWORD page_flags_memory(int flags, DWORD huge, DWORD commit, DWORD reserve) {
@@ -49,8 +48,8 @@ typedef struct {
 
         return page_protect;
     }
-    // Virtual Memory Functions
 
+    // Virtual Memory Functions
     bool glr_page_free(void* addr, size_t size) {
         return VirtualFree(addr, size, MEM_RELEASE);
     }
@@ -66,7 +65,6 @@ typedef struct {
     }
 
     // Physical Memory Functions
-
     bool glr_mem_free(GLR_FD fd, size_t size) {
         return glr_fd_close(fd);
     }
@@ -92,19 +90,6 @@ typedef struct {
     #include "atomic.h"
     
     static GLR_ATOMIC(uint64_t) physical_backing_id = 0;
-
-    // GLR_PAGE_* flags To System Flags Conversion
-    inline int page_flags_memory(void* addr, int flags, int page_memory) {
-        if (flags & GLR_PAGE_HUGE)
-            page_memory |= MAP_HUGETLB;
-
-        if ((flags & GLR_PAGE_COMMIT) && (page_memory & MAP_PRIVATE))
-            page_memory |= MAP_POPULATE;
-        else
-            page_memory |= MAP_NORESERVE;
-
-        return page_memory;
-    }
 
     // Virtual Memory Functions
 
