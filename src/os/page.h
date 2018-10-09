@@ -17,7 +17,7 @@
 #define GLR_PAGE_ALLOC(var, base, offset, size, type)   \
     var = glr_page_alloc(GLR_PAGE_OFFSET(base, offset), \
                 size,  GLR_PAGE_READ | GLR_PAGE_WRITE); \
-    GLR_ASSERT((var) = GLR_PAGE_OFFSET(base, offset),   \
+    GLR_ASSERT((var) == GLR_PAGE_OFFSET(base, offset),  \
         "Failed to map data for " type)
 
 

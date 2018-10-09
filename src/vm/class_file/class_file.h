@@ -72,6 +72,8 @@ typedef enum {
     GLR_CLASS_ERROR = 0xff
 } glr_class_result;
 
+void glr_class_free(glr_classloader_t* loader);
+
 void glr_class_init(glr_classloader_t* loader, glr_sysinfo_t* info);
 
 uintptr_t glr_class_load(glr_classloader_t* loader, uint8_t* bytes, size_t size);
