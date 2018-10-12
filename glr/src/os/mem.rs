@@ -53,21 +53,26 @@ impl Page {
     }
 
     #[inline]
-    pub fn ptr<T>(&self, offset: usize) -> *mut T {
-        (self.addr + offset) as *mut T
+    pub fn release(&self) {
+        unsafe { page_impl::virtual_release(&self); }
     }
 
     #[inline]
-    pub fn release(&self) {
-        unsafe { page_impl::virtual_release(&self); }
+    pub fn ptr<T>(&self, offset: usize) -> Option<*mut T> {
+        if offset >= self.size {
+            None
+        } else {
+            Some((self.addr + offset) as *mut T)
+        }
     }
 }
 
 #[cfg(unix)]
 mod page_impl {
     use super::*;
-    
-    static mut physical_id: usize = 0;
+    use core::sync::atomic::AtomicUsize;
+
+    static mut physical_id: AtomicUsize = AtomicUsize::new(0);
 
     pub unsafe fn physical_drop(page: &PhysicalPage) {
         close(page.handle);
@@ -138,12 +143,10 @@ mod page_impl {
     }
 
     pub unsafe fn physical_alloc(size: usize, flags: i32) -> Option<PhysicalPage> {
-        let name = NULL as *mut _;
-        let attributes = NULL as *mut _;
         let (size_high, size_low) = ((size >> 32) as DWORD, size as DWORD);
         let flags = protect_flags(flags) | memory_flags(flags, &PHYSICAL_FLAGS);
 
-        match CreateFileMappingW(INVALID_HANDLE_VALUE, attributes, flags, size_high, size_low, name) {
+        match CreateFileMappingW(INVALID_HANDLE_VALUE, null_mut(), flags, size_high, size_low, null_mut()) {
             NULL => None,
             handle => Some(PhysicalPage { handle })
         }     

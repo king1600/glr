@@ -14,4 +14,12 @@ git = "https://github.com/rust-lang/libc"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
-features = ["winnt", "memoryapi", "handleapi", "sysinfoapi"]
+features = [
+    "winnt",
+    "winbase",
+    "synchapi",
+    "memoryapi",
+    "handleapi",
+    "sysinfoapi",
+    "processthreadsapi",
+]

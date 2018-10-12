@@ -1,7 +1,12 @@
 pub use self::ffi::*;
+pub use core::ptr::null_mut;
 pub use core::intrinsics::*;
 
-pub const NULL: *mut c_void = 0 as *mut _;
+#[allow(dead_code)] pub mod mem;
+#[allow(dead_code)] pub mod info;
+#[allow(dead_code)] pub mod thread;
+
+pub const NULL: *mut c_void = 0 as *mut c_void;
 
 #[cfg(unix)]
 pub mod ffi {
@@ -11,11 +16,15 @@ pub mod ffi {
 #[cfg(windows)]
 pub mod ffi {
     pub use winapi::ctypes::*;
+    pub use winapi::shared::minwindef::*;
+
     pub use winapi::um::winnt::*;
+    pub use winapi::um::winbase::*;
+    pub use winapi::um::synchapi::*;
     pub use winapi::um::memoryapi::*;
     pub use winapi::um::handleapi::*;
     pub use winapi::um::sysinfoapi::*;
-    pub use winapi::shared::minwindef::*;
+    pub use winapi::um::processthreadsapi::*;    
 }
 
 pub trait CString {
@@ -27,6 +36,3 @@ impl CString for str {
         self.as_ptr() as *mut c_char
     }
 }
-
-#[allow(dead_code)] pub mod mem;
-#[allow(dead_code)] pub mod info;
