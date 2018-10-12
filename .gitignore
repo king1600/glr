@@ -1,9 +1,2 @@
-build/
-*.a
-*.o
-*.so
-*.lib
-*.dll
-*.exe
-*.pdb
-glr
+target/
+Cargo.lock

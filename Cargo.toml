@@ -1,0 +1,13 @@
+[workspace]
+members = ["glr", "glrc"]
+
+[profile.dev]
+codegen-units = 8
+incremental = true
+overflow-checks = false
+
+[profile.release]
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = false
