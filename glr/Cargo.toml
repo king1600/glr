@@ -4,9 +4,14 @@ edition = "2018"
 version = "0.1.0"
 authors = ["king1600"]
 
-[dependencies]
-libc = { version = "0.2", default-features = false }
+[dependencies.lazy_static]
+version = "1"
+features = ["spin_no_std"]
+
+[dependencies.libc]
+default-features = false
+git = "https://github.com/rust-lang/libc"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
-features = ["winnt", "memoryapi", "handleapi"]
+features = ["winnt", "memoryapi", "handleapi", "sysinfoapi"]
