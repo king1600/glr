@@ -14,29 +14,33 @@ impl Drop for Thread {
 #[cfg(unix)]
 impl Thread {
     pub fn create(func: extern "C" fn(usize) -> usize, arg: usize) -> Self {
-        let handle = 0;
-        let func = func as extern "C" fn(*mut c_void) -> *mut c_void;
-        unsafe { pthread_create(&handle, null_mut(), func, arg as *mut c_void); }
-        Thread { handle }
+        Self {
+            handle: unsafe {
+                let mut handle = 0;
+                let func = core::mem::transmute(func);
+                pthread_create(&mut handle, null_mut(), func, arg as *mut c_void);
+                handle
+            }
+        }
     }
 
     #[inline]
     pub fn current() -> Thread {
-
+        Self { handle: unsafe { pthread_self() } }
     }
 
     #[inline]
     pub fn exit() {
-
+        unsafe { pthread_exit(null_mut()); }
     }
 
     #[inline]
     pub fn yield_now() {
-
+        unsafe { sched_yield(); }
     }
 
-    pub fn join(&self) {
-
+    pub fn join(&mut self) {
+        unsafe { pthread_join(self.handle, null_mut()); }
     }
 }
 
@@ -54,7 +58,7 @@ impl Thread {
 
     #[inline]
     pub fn current() -> Thread {
-        Thread { handle: unsafe { GetCurrentThread() } }
+        Self { handle: unsafe { GetCurrentThread() } }
     }
 
     #[inline]

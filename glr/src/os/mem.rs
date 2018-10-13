@@ -7,6 +7,7 @@ pub const PAGE_HUGE:   i32 = 1 << 3;
 pub const PAGE_COMMIT: i32 = 1 << 4;
 
 pub struct PhysicalPage {
+    size: usize,
     #[cfg(unix)] handle: i32,
     #[cfg(windows)] handle: HANDLE,
 }
@@ -70,31 +71,65 @@ impl Page {
 #[cfg(unix)]
 mod page_impl {
     use super::*;
-    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::{AtomicUsize, Ordering};
 
-    static mut physical_id: AtomicUsize = AtomicUsize::new(0);
+    static mut PHYSICAL_ID: AtomicUsize = AtomicUsize::new(0);
 
     pub unsafe fn physical_drop(page: &PhysicalPage) {
         close(page.handle);
     }
 
     pub unsafe fn physical_map(page: &PhysicalPage, addr: usize, size: usize, flags: i32) -> Option<Page> {
-        
+        inner_map(addr, size, flags, page.handle, MAP_SHARED)
     }
 
-    pub unsafe fn physical_alloc(size: usize, flags: i32) -> Option<PhysicalPage> {
+    pub unsafe fn physical_alloc(size: usize, _flags: i32) -> Option<PhysicalPage> {
+        let mut path = [0; 128];
+        let phys_id = PHYSICAL_ID.fetch_add(1, Ordering::Relaxed);
+        snprintf(path.as_mut_ptr(), path.len(), "/glr(%d,%lu)\0".c_str(), getpid(), phys_id);
+
+        let handle = shm_open(path.as_ptr(), O_RDWR | O_CREAT | O_EXCL, 0o600);
+        if handle != -1 {
+            shm_unlink(path.as_ptr());
+            ftruncate(handle, size as i64);
+            Some(PhysicalPage { handle, size })
+        } else {
+            return None
+        }
     }
 
     pub unsafe fn virtual_drop(page: &Page) {
-
+        munmap(page.addr as *mut _, page.size);
     }
 
     pub unsafe fn virtual_release(page: &Page) {
-
+        madvise(page.addr as *mut _, page.size, MADV_DONTNEED);
     }
 
     pub unsafe fn virtual_alloc(addr: usize, size: usize, flags: i32) -> Option<Page> {
+        inner_map(addr, size, flags, -1, MAP_PRIVATE | MAP_ANONYMOUS)
+    }
 
+    unsafe fn inner_map(addr: usize, size: usize, flags: i32, fd: i32, mut memory: i32) -> Option<Page> {
+        let mut protect = 0;
+        if flags & PAGE_EXEC != 0 { protect |= PROT_EXEC }
+        if flags & PAGE_READ != 0 { protect |= PROT_READ }
+        if flags & PAGE_WRITE != 0 { protect |= PROT_WRITE }
+        if flags & PAGE_HUGE != 0 { memory |= MAP_HUGETLB }
+
+        memory |= if (flags & PAGE_COMMIT != 0) && (memory & MAP_PRIVATE != 0) {
+            MAP_POPULATE
+        } else {
+            MAP_NORESERVE
+        };
+
+        match mmap(addr as *mut _, size, protect, memory, fd, 0) {
+            MAP_FAILED => None,
+            addr => Some(Page {
+                size: size,
+                addr: addr as usize,
+            })
+        }
     }
 }
 
@@ -148,7 +183,7 @@ mod page_impl {
 
         match CreateFileMappingW(INVALID_HANDLE_VALUE, null_mut(), flags, size_high, size_low, null_mut()) {
             NULL => None,
-            handle => Some(PhysicalPage { handle })
+            handle => Some(PhysicalPage { handle, size })
         }     
     }
 
