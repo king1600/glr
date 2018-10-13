@@ -1,34 +1,55 @@
 use super::Class;
 use crate::os::pool::PoolAllocator;
 
+const CLASS_MAP_RANGE: usize = 1 << 29;
+const CLASS_MEM_RANGE: usize = 1 << 30;
+
+#[inline(always)]
+fn alloc_at(address_range: usize) -> Option<PoolAllocator> {
+    PoolAllocator::new(address_range, (address_range << 1) - address_range)
+}
+
 pub struct ClassLoader {
-    memory: PoolAllocator,
-    mapping: PoolAllocator,
-    classes: *mut Class,
-    capacity: usize,
+    mapping: ClassMapping,
+    allocator: PoolAllocator,
+}
+
+struct ClassMapping {
     size: usize,
+    capacity: usize,
+    classes: *mut Class,
+    allocator: PoolAllocator,
 }
 
 impl ClassLoader {
     pub fn new() -> Option<Self> {
         try {
-            const CLASS_SIZE: usize = core::mem::size_of::<*mut Class>();
+            Self {
+                allocator: alloc_at(CLASS_MEM_RANGE)?,
+                mapping: ClassMapping::at(CLASS_MAP_RANGE)?,
+            }
+        }
+    }
+}
 
-            let (size, capacity) = (0, 8);
-            let memory = Self::alloc_pool_at(1 << 29)?;
-            let mut mapping = Self::alloc_pool_at(1 << 30)?;
-            let classes = mapping.alloc_bytes(CLASS_SIZE * capacity)? as *mut _;
+impl ClassMapping {
+    pub fn at(address_range: usize) -> Option<ClassMapping> {
+        const CLASS_SIZE: usize = core::mem::size_of::<*mut Class>();
 
-            Self { size, capacity, classes, mapping, memory }
+        try {
+            let size = 0;
+            let capacity = 8;
+            let mut allocator = alloc_at(address_range)?;
+            let classes = allocator.alloc_bytes(CLASS_SIZE * capacity)? as *mut _;
+            Self { size, capacity, classes, allocator }
         }
     }
 
-    #[inline(always)]
-    fn alloc_pool_at(memory_range: usize) -> Option<PoolAllocator> {
-        PoolAllocator::new(memory_range, (memory_range << 1) - memory_range)
+    pub fn find(&mut self, _class_name: &str) -> Option<&mut Class> {
+        None
     }
 
-    pub fn load_class(&mut self, _name: &str, _bytes: &[u8]) -> Option<&mut Class> {
+    pub fn insert(&mut self, _class: *mut Class) -> Option<&mut Class> {
         None
     }
 }
