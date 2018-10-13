@@ -4,6 +4,7 @@ pub use core::intrinsics::*;
 
 #[allow(dead_code)] pub mod mem;
 #[allow(dead_code)] pub mod info;
+#[allow(dead_code)] pub mod sync;
 #[allow(dead_code)] pub mod thread;
 
 pub const NULL: *mut c_void = 0 as *mut c_void;
@@ -24,6 +25,7 @@ pub mod ffi {
     pub use winapi::um::memoryapi::*;
     pub use winapi::um::handleapi::*;
     pub use winapi::um::sysinfoapi::*;
+    pub use winapi::um::minwinbase::*;
     pub use winapi::um::processthreadsapi::*;    
 }
 

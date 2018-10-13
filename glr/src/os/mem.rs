@@ -70,8 +70,7 @@ impl Page {
 
 #[cfg(unix)]
 mod page_impl {
-    use super::*;
-    use core::sync::atomic::{AtomicUsize, Ordering};
+    use super::{*, super::sync::{AtomicUsize, Ordering}};
 
     static mut PHYSICAL_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -112,6 +111,8 @@ mod page_impl {
 
     unsafe fn inner_map(addr: usize, size: usize, flags: i32, fd: i32, mut memory: i32) -> Option<Page> {
         let mut protect = 0;
+
+        if addr > 0 { memory |= MAP_FIXED }
         if flags & PAGE_EXEC != 0 { protect |= PROT_EXEC }
         if flags & PAGE_READ != 0 { protect |= PROT_READ }
         if flags & PAGE_WRITE != 0 { protect |= PROT_WRITE }

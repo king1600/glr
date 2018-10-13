@@ -1,4 +1,5 @@
 use super::*;
+use core::mem::transmute;
 
 pub struct Thread {
     #[cfg(unix)] handle: pthread_t,
@@ -11,70 +12,92 @@ impl Drop for Thread {
     }
 }
 
-#[cfg(unix)]
 impl Thread {
     pub fn create(func: extern "C" fn(usize) -> usize, arg: usize) -> Self {
-        Self {
-            handle: unsafe {
-                let mut handle = 0;
-                let func = core::mem::transmute(func);
-                pthread_create(&mut handle, null_mut(), func, arg as *mut c_void);
-                handle
-            }
-        }
-    }
-
-    #[inline]
-    pub fn current() -> Thread {
-        Self { handle: unsafe { pthread_self() } }
-    }
-
-    #[inline]
-    pub fn exit() {
-        unsafe { pthread_exit(null_mut()); }
+        unsafe { thread_impl::create(transmute(func), arg as *mut c_void) }
     }
 
     #[inline]
     pub fn yield_now() {
-        unsafe { sched_yield(); }
+        unsafe { thread_impl::yield_now(); }
     }
 
+    #[inline]
     pub fn join(&mut self) {
-        unsafe { pthread_join(self.handle, null_mut()); }
+        unsafe { thread_impl::join(&self); }
+    }
+
+    #[inline]
+    pub fn exit() {
+        unsafe { thread_impl::exit(); }
+    }
+
+    #[inline]
+    pub fn current() -> Self {
+        unsafe { thread_impl::current() }
+    }
+}
+
+#[cfg(unix)]
+mod thread_impl {
+    use super::*;
+
+    #[inline]
+    pub unsafe fn create(func: extern "C" fn(*mut c_void) -> *mut c_void, arg: *mut c_void) -> Thread {
+        let mut thread_id = 0;
+        pthread_create(&mut thread_id, null_mut(), func, arg);
+        Thread { handle: thread_id }
+    }
+
+    #[inline]
+    pub unsafe fn join(thread: &Thread) {
+        pthread_join(thread.handle, null_mut());
+    }
+
+    #[inline]
+    pub unsafe fn current() -> Thread {
+        Thread { handle: pthread_self() }
+    }
+
+    #[inline]
+    pub unsafe fn exit() {
+        pthread_exit(null_mut());
+    }
+
+    #[inline]
+    pub unsafe fn yield_now() {
+        sched_yield();
     }
 }
 
 #[cfg(windows)]
-impl Thread {
-    pub fn create(func: extern "C" fn(usize) -> usize, arg: usize) -> Self {
-        Self {
-            handle: unsafe {
-                let mut id = 0;
-                let func = core::mem::transmute(func);
-                CreateThread(null_mut(), 0, Some(func), arg as *mut c_void, 0, &mut id)
-            }
-        }
+mod thread_impl {
+    use super::*;
+
+    #[inline]
+    pub unsafe fn create(func: extern "system" fn(*mut c_void) -> DWORD, arg: *mut c_void) -> Thread {
+        let mut thread_id = 0;
+        Thread { handle: CreateThread(null_mut(), 0, Some(func), arg, 0, &mut thread_id) }
     }
 
     #[inline]
-    pub fn current() -> Thread {
-        Self { handle: unsafe { GetCurrentThread() } }
+    pub unsafe fn join(thread: &Thread) {
+        WaitForSingleObject(thread.handle, INFINITE);
+        CloseHandle(thread.handle);
     }
 
     #[inline]
-    pub fn exit() {
-        unsafe { ExitThread(0); }
+    pub unsafe fn current() -> Thread {
+        Thread { handle: GetCurrentThread() }
     }
 
     #[inline]
-    pub fn yield_now() {
-        unsafe { SwitchToThread(); }
+    pub unsafe fn yield_now() {
+        SwitchToThread();
     }
 
-    pub fn join(&mut self) {
-        unsafe {
-            WaitForSingleObject(self.handle, INFINITE);
-            CloseHandle(self.handle);
-        }
+    #[inline]
+    pub unsafe fn exit() {
+        ExitThread(0);
     }
 }

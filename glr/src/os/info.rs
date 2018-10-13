@@ -31,7 +31,8 @@ unsafe fn get_system_info() -> SysInfo {
     let file = fopen("/proc/meminfo\0".c_str(), "r\0".c_str());
     if !file.is_null() {
         let mut line = [0; 128];
-        while !fgets(line.as_mut_ptr(), 128, file).is_null() {
+        let size = (line.len() - 1) as i32;
+        while !fgets(line.as_mut_ptr(), size, file).is_null() {
             if !strstr(line.as_ptr(), "Hugepagesize:\0".c_str()).is_null() {
                 huge_page_size = (strtol((&line[13..]).as_ptr(), null_mut(), 10) * 1024) as usize;
             }
