@@ -6,15 +6,17 @@ pub const PAGE_WRITE:  i32 = 1 << 2;
 pub const PAGE_HUGE:   i32 = 1 << 3;
 pub const PAGE_COMMIT: i32 = 1 << 4;
 
+#[cfg(unix)] type PageHandle = i32;
+#[cfg(windows)] type PageHandle = HANDLE;
+
 pub struct PhysicalPage {
     size: usize,
-    #[cfg(unix)] handle: i32,
-    #[cfg(windows)] handle: HANDLE,
+    handle: PageHandle,
 }
 
 pub struct Page {
-    addr: usize,
-    size: usize,
+    pub addr: usize,
+    pub size: usize,
     #[cfg(windows)] mapped: bool,
 }
 
@@ -32,6 +34,11 @@ impl Drop for Page {
 
 impl PhysicalPage {
     #[inline]
+    pub unsafe fn from(handle: PageHandle, size: usize) -> PhysicalPage {
+        PhysicalPage { handle, size }
+    }
+
+    #[inline]
     pub fn new(size: usize, flags: i32) -> Option<PhysicalPage> {
         unsafe { page_impl::physical_alloc(size, flags) }
     }
@@ -43,6 +50,16 @@ impl PhysicalPage {
 }
 
 impl Page {
+    #[cfg(unix)]
+    pub unsafe fn from(addr: usize, size: usize) -> Page {
+        Page { addr, size }
+    }
+
+    #[cfg(windows)]
+    pub unsafe fn from(addr: usize, size: usize) -> Page {
+        Page { addr, size, mapped: false }
+    }
+
     #[inline]
     pub fn new(addr: usize, size: usize, flags: i32) -> Option<Page> {
         unsafe { page_impl::virtual_alloc(addr, size, flags) }

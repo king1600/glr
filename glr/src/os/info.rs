@@ -1,13 +1,13 @@
 use super::*;
 
 pub struct SysInfo {
-    num_cpus: usize,
-    page_size: usize,
-    huge_page_size: usize,
+    pub num_cpus: usize,
+    pub page_size: usize,
+    pub huge_page_size: usize,
 }
 
 lazy_static! {
-    static ref INNER_SYSTEM_INFO: SysInfo = unsafe { get_system_info() };
+    pub static ref SYS_INFO: SysInfo = unsafe { get_system_info() };
 }
 
 #[cfg(windows)]

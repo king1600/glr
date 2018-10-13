@@ -5,6 +5,7 @@ pub use core::intrinsics::*;
 #[allow(dead_code)] pub mod mem;
 #[allow(dead_code)] pub mod info;
 #[allow(dead_code)] pub mod sync;
+#[allow(dead_code)] pub mod pool;
 #[allow(dead_code)] pub mod thread;
 
 pub const NULL: *mut c_void = 0 as *mut c_void;
