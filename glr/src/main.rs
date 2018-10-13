@@ -1,6 +1,6 @@
 #![no_std]
 #![no_main]
-#![feature(const_fn)]
+#![feature(const_fn, try_blocks)]
 #![feature(asm, core_intrinsics)]
 
 extern crate libc;
