@@ -4,6 +4,10 @@ edition = "2018"
 version = "0.1.0"
 authors = ["king1600"]
 
+[features]
+default = []
+debug = []
+
 [dependencies.lazy_static]
 version = "1"
 features = ["spin_no_std"]
@@ -19,6 +23,7 @@ features = [
     "winbase",
     "fileapi",
     "synchapi",
+    "debugapi",
     "memoryapi",
     "handleapi",
     "sysinfoapi",

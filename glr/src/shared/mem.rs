@@ -1,7 +1,5 @@
 use super::*;
 
-pub const STDOUT_BUFFER: usize = (1 << 14); // 16kb of addressable memory
-pub const STDERR_BUFFER: usize = (1 << 15); // 32kb of addressable memory
 pub const CLASS_MAPPING: usize = (1 << 25); // 32mb of addressable memory
 pub const CLASS_MEMORY:  usize = (1 << 30); // 1gb of addressable memory
 

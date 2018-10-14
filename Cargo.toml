@@ -9,6 +9,7 @@ overflow-checks = false
 
 [profile.release]
 lto = true
+opt-level = 3
 debug = false
 panic = "abort"
 overflow-checks = false
