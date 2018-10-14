@@ -9,7 +9,7 @@ extern crate libc;
 
 #[macro_use]
 #[allow(dead_code)]
-pub mod os;
+pub mod shared;
 
 #[allow(dead_code)]
 pub mod vm;

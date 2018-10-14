@@ -2,17 +2,6 @@ pub use self::ffi::*;
 pub use core::ptr::null_mut;
 pub use core::intrinsics::*;
 
-#[macro_use]
-#[allow(dead_code)]
-#[allow(unused_macros)]
-pub mod io;
-
-#[allow(dead_code)] pub mod mem;
-#[allow(dead_code)] pub mod info;
-#[allow(dead_code)] pub mod sync;
-#[allow(dead_code)] pub mod pool;
-#[allow(dead_code)] pub mod thread;
-
 pub const NULL: *mut c_void = 0 as *mut c_void;
 
 #[cfg(unix)]
