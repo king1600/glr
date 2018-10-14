@@ -2,6 +2,11 @@ pub use self::ffi::*;
 pub use core::ptr::null_mut;
 pub use core::intrinsics::*;
 
+#[macro_use]
+#[allow(dead_code)]
+#[allow(unused_macros)]
+pub mod io;
+
 #[allow(dead_code)] pub mod mem;
 #[allow(dead_code)] pub mod info;
 #[allow(dead_code)] pub mod sync;
@@ -22,6 +27,7 @@ pub mod ffi {
 
     pub use winapi::um::winnt::*;
     pub use winapi::um::winbase::*;
+    pub use winapi::um::fileapi::*;
     pub use winapi::um::synchapi::*;
     pub use winapi::um::memoryapi::*;
     pub use winapi::um::handleapi::*;

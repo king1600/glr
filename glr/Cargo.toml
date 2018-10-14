@@ -17,6 +17,7 @@ version = "0.3"
 features = [
     "winnt",
     "winbase",
+    "fileapi",
     "synchapi",
     "memoryapi",
     "handleapi",

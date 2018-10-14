@@ -6,12 +6,12 @@ pub const PAGE_WRITE:  i32 = 1 << 2;
 pub const PAGE_HUGE:   i32 = 1 << 3;
 pub const PAGE_COMMIT: i32 = 1 << 4;
 
-#[cfg(unix)] type PageHandle = i32;
-#[cfg(windows)] type PageHandle = HANDLE;
+#[cfg(unix)] pub type Handle = i32;
+#[cfg(windows)] pub type Handle = HANDLE;
 
 pub struct PhysicalPage {
     size: usize,
-    handle: PageHandle,
+    handle: Handle,
 }
 
 pub struct Page {
@@ -34,7 +34,7 @@ impl Drop for Page {
 
 impl PhysicalPage {
     #[inline]
-    pub unsafe fn from(handle: PageHandle, size: usize) -> PhysicalPage {
+    pub unsafe fn from(handle: Handle, size: usize) -> PhysicalPage {
         PhysicalPage { handle, size }
     }
 
@@ -68,6 +68,11 @@ impl Page {
     #[inline]
     pub fn len(&self) -> usize {
         self.size
+    }
+
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        unsafe { core::slice::from_raw_parts(self.addr as *const _, self.size) }
     }
 
     #[inline]
