@@ -25,4 +25,11 @@ pub mod ffi {
     pub use winapi::ctypes::*;
     pub use winapi::shared::minwindef::*;
     
+    pub use winapi::um::winnt::*;
+    pub use winapi::um::memoryapi::*;
+    pub use winapi::um::sysinfoapi::*;
+
+    extern "C" {
+        pub fn printf(format: *const c_char, ...) -> i32;
+    }
 }

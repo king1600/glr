@@ -15,7 +15,9 @@ git = "https://github.com/rust-lang/libc"
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = [
+    "winnt",
     "memoryapi",
+    "sysinfoapi",
 ]
 
 [profile.dev]
