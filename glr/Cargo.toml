@@ -4,4 +4,30 @@ edition = "2018"
 version = "0.1.0"
 authors = ["king1600"]
 
-[dependencies]
+[dependencies.lazy_static]
+version = "1"
+features = ["spin_no_std"]
+
+[target.'cfg(unix)'.dependencies.libc]
+default-features = false
+git = "https://github.com/rust-lang/libc"
+
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = [
+    "memoryapi",
+]
+
+[profile.dev]
+panic = "abort"
+codegen-units = 8
+incremental = true
+overflow-checks = false
+
+[profile.release]
+lto = true
+opt-level = 3
+debug = false
+panic = "abort"
+overflow-checks = false
+debug-assertions = false
