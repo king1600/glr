@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(try_blocks)]
 #![feature(core_intrinsics)]
 #![feature(panic_info_message)]
 
