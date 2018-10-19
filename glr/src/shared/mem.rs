@@ -69,6 +69,11 @@ impl MemoryRange {
     }
 
     #[inline]
+    pub fn as_ptr<T>(&self) -> *mut T {
+        self.addr as *mut _
+    } 
+
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         unsafe { core::slice::from_raw_parts(self.addr as *const _, self.size) }
     }

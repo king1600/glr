@@ -2,55 +2,62 @@ use super::Class;
 use super::shared::*;
 use super::shared::mem::{MemoryRange, CLASS_MAPPING};
 
-pub enum ClassInsertError {
+pub enum ClassError {
     OutOfMemory,
-    InvalidClassName,
+    BadClassName,
 }
 
 pub struct ClassMapping {
     size: usize,
     capacity: usize,
+    memory: MemoryRange,
     classes: *mut *mut Class,
-    allocator: MemoryRange,
 }
 
 impl ClassMapping {
     pub fn new() -> Option<Self> {
         try {
-            let (size, capacity) = (0, 8);
-            let mut allocator = MemoryRange::at(CLASS_MAPPING)?;
-            let classes = Self::alloc_classes(&mut allocator, capacity)?;
-            Self { size, capacity, classes, allocator }
+            let mut mapping = Self {
+                size: 0,
+                capacity: 8,
+                classes: null_mut(),
+                memory: MemoryRange::at(CLASS_MAPPING)?
+            };
+            mapping.classes = mapping.memory.as_ptr();
+            mapping.grow_to(mapping.capacity)?;
+            mapping
         }
     }
 
     #[inline]
-    fn alloc_classes(allocator: &mut MemoryRange, capacity: usize) -> Option<*mut *mut Class> {
-        let size = core::mem::size_of::<*mut Class>() * capacity;
-        allocator.alloc_bytes(size).and_then(|bytes| Some(unsafe {
-            core::ptr::write_bytes(bytes, 0, size);
-            bytes as *mut *mut _
-        }))
-    } 
+    fn is_full(&self) -> bool {
+        self.size >= self.capacity && self.capacity >= self.memory.len()
+    }
 
-    #[inline]
-    fn hash_class_name(name: &str) -> u32 {
+    fn grow_to(&mut self, capacity: usize) -> Option<()> {
+        let growth = capacity.min(self.memory.len()) - self.capacity;
+        let size = core::mem::size_of::<*mut Class>() * growth;
+        self.memory.alloc_bytes(size).and_then(|bytes| unsafe {
+            core::ptr::write_bytes(bytes, 0, size);
+            Some(())
+        })
+    }
+
+    fn hash(class_name: &str) -> usize {
         const FNV_PRIME: u32 = 16777619;
         const FNV_OFFSET: u32 = 2166136261;
-        name.as_bytes().iter().fold(FNV_OFFSET, |hash, &byte| (hash ^ byte as u32) * FNV_PRIME)
+        class_name
+            .as_bytes().iter()
+            .fold(FNV_OFFSET, |hash, &byte| (hash ^ byte as u32) * FNV_PRIME)
+            as usize
     }
 
-    #[inline]
-    fn has_open_slots(&self) -> bool {
-        self.size < self.capacity && self.capacity <= self.allocator.len()
-    }
-
-    pub fn insert(&mut self, class: *mut Class) -> Result<(), ClassInsertError> {
+    pub fn insert(&mut self, class: *mut Class) -> Result<(), ClassError> {
         unsafe {
             match (*class).name() {
-                Some(name) if self.has_open_slots() => self.insert_inner(name, &mut *class),
-                None => Err(ClassInsertError::InvalidClassName),
-                _ => Err(ClassInsertError::OutOfMemory),
+                Some(name) if !self.is_full() => self.put(name, &mut *class),
+                Some(_) => Err(ClassError::OutOfMemory),
+                None => Err(ClassError::BadClassName),
             }
         }
     }
@@ -62,7 +69,7 @@ impl ClassMapping {
             }
 
             let mask = self.capacity - 1;
-            let start_index = Self::hash_class_name(class_name) as usize & mask;
+            let start_index = Self::hash(class_name) & mask;
             let mut index = start_index;
             let mut slot_class = self.classes.offset(index as isize);
 
@@ -79,21 +86,19 @@ impl ClassMapping {
         }
     }
 
-    unsafe fn insert_inner(&mut self, class_name: &str, class: &mut Class) -> Result<(), ClassInsertError> {
+    unsafe fn put(&mut self, class_name: &str, class: &mut Class) -> Result<(), ClassError> {
         if unlikely(class.next_class() > 0) {
             return Ok(())
         }
-        
+
         self.size += 1;
         if self.size >= self.capacity {
-            let old_capacity = self.capacity;
-            self.capacity = (self.capacity << 1).min(self.allocator.len());
-            Self::alloc_classes(&mut self.allocator, self.capacity - old_capacity)
-                .ok_or(ClassInsertError::OutOfMemory)?;
+            self.grow_to(self.capacity << 1)
+                .ok_or(ClassError::OutOfMemory)?
         }
 
         let mask = self.capacity - 1;
-        let mut index = Self::hash_class_name(class_name) as usize & mask;
+        let mut index = Self::hash(class_name) & mask;
 
         for _ in 0..self.size {
             let slot_class = self.classes.offset(index as isize);
@@ -107,6 +112,6 @@ impl ClassMapping {
             index = (index + 1) & mask;
         }
 
-        Err(ClassInsertError::OutOfMemory)
+        Err(ClassError::OutOfMemory)
     }
 }
