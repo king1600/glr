@@ -1,11 +1,6 @@
-use super::Class;
+use super::*;
 use super::shared::*;
 use super::shared::mem::{MemoryRange, CLASS_MAPPING};
-
-pub enum ClassError {
-    OutOfMemory,
-    BadClassName,
-}
 
 pub struct ClassMapping {
     size: usize,
