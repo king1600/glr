@@ -82,10 +82,6 @@ impl ClassMapping {
     }
 
     unsafe fn put(&mut self, class_name: &str, class: &mut Class) -> Result<(), ClassError> {
-        if unlikely(class.next_class() > 0) {
-            return Ok(())
-        }
-
         self.size += 1;
         if self.size >= self.capacity {
             self.grow_to(self.capacity << 1)
@@ -94,16 +90,18 @@ impl ClassMapping {
 
         let mask = self.capacity - 1;
         let mut index = Self::hash(class_name) & mask;
-
+        
         for _ in 0..self.size {
             let slot_class = self.classes.offset(index as isize);
+
             if (*slot_class).is_null() {
                 *slot_class = class;
                 return Ok(())
-            } else if (**slot_class).next_class() < class.next_class() {
+            } else if (**slot_class).compare_next(class) {
                 core::mem::swap(&mut *slot_class, &mut (class as *mut _));
             }
-            class.bump_next_class();
+
+            class.bump_next();
             index = (index + 1) & mask;
         }
 

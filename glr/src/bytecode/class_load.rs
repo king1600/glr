@@ -7,7 +7,11 @@ pub struct ClassLoader {
 }
 
 pub trait ClassLoadable<'a, T>: Sized {
-    fn load(root: T, reader: &mut Reader<'a>, loader: &mut ClassLoader) -> Result<Self, ClassError>;
+    fn load(
+        root: T,
+        reader: &mut Reader<'a>,
+        loader: &mut ClassLoader
+    ) -> Result<Self, ClassError>;
 }
 
 impl ClassLoader {

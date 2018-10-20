@@ -21,23 +21,51 @@ pub struct Method {
 }
 
 pub struct ClassFile {
-    access: u8,
-    next_class: usize,
-    const_pool: ConstPool,
-    methods: Option<*mut Method>,
+    pub access: u8,
+    pub next_class: usize,
+    pub const_pool: ConstPool,
+    pub fields: Option<*mut Field>,
+    pub methods: Option<*mut Method>,
+}
+
+pub trait Nextable {
+    fn bump_next(&mut self) {}
+
+    fn set_next(&mut self, next: *mut Self);
+    
+    fn compare_next(&self, other: &Self) -> bool { true }
+}
+
+impl Nextable for Method {
+    fn set_next(&mut self, next: *mut Self) {
+        self.next = Some(next)
+    }
+}
+
+impl Nextable for Field {
+    fn set_next(&mut self, next: *mut Self) {
+        let next_field = match self {
+            Field::Enum(_, _, next_field)   |
+            Field::Module(_, next_field)    |
+            Field::Struct(_, _, next_field) => next_field,
+        };
+        *next_field = Some(next);
+    }
+}
+
+impl Nextable for Class {
+    fn set_next(&mut self, _next: *mut Self) {}
+
+    fn bump_next(&mut self) {
+        self.as_class_file_mut().next_class += 1;
+    }
+    
+    fn compare_next(&self, other: &Self) -> bool {
+        self.as_class_file().next_class < other.as_class_file().next_class
+    }
 }
 
 impl Class {
-    #[inline]
-    pub fn next_class(&self) -> usize {
-        self.as_class_file().next_class
-    }
-
-    #[inline]
-    pub fn bump_next_class(&mut self) {
-        self.as_class_file_mut().next_class += 1;
-    }
-
     #[inline]
     pub fn name(&self) -> Option<&str> {
         self.as_class_file().const_pool.get_str(0)

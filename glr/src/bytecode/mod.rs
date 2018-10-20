@@ -25,5 +25,10 @@ pub use self::interpreter::*;
 
 pub enum ClassError {
     OutOfMemory,
+    BadClassType,
     BadClassName,
+    BadClassMagic,
+    BadFieldSize,
+    BadMethodSize,
+    BadAccessModifier,
 }
