@@ -78,9 +78,11 @@ impl MemoryRange {
         unsafe { core::slice::from_raw_parts(self.addr as *const _, self.size) }
     }
 
-    pub fn alloc<T: Sized>(&mut self) -> Option<*mut T> {
-        self.alloc_bytes(core::mem::size_of::<T>())
-            .and_then(|bytes| Some(bytes as *mut _))
+    pub fn alloc<T: Sized>(&mut self, value: T) -> Option<*mut T> {
+        self.alloc_bytes(core::mem::size_of::<T>()).and_then(|bytes| unsafe {
+            *(bytes as *mut _) = value;
+            Some(bytes as *mut _)
+        })
     }
 
     pub fn alloc_bytes(&mut self, bytes: usize) -> Option<*mut u8> {

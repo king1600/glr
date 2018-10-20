@@ -1,87 +1,94 @@
-use super::ConstPool;
+use super::{ConstPool, Mapping, Mappable, Hash32};
 
 #[repr(u8)]
 pub enum Class {
-    Module(ClassFile),
-    Struct(ClassFile),
     Enum(ClassFile),
+    Struct(ClassFile),
+    Module(ClassFile),
 }
 
 #[repr(u8)]
 pub enum Field {
-    Module(u16, Option<*mut Field>),
-    Struct(u16, u16, Option<*mut Field>),
-    Enum(u16, Option<*mut Field>, Option<*mut Field>),
+    Module(FieldContext, u16),
+    Struct(FieldContext, u16, u16),
+    Enum(FieldContext, u16, Option<*mut Field>),
+}
+
+pub struct FieldContext {
+    class: *mut Class,
+    next_field: usize,
 }
 
 pub struct Method {
     name: u16,
-    signature: u16,
-    next: Option<*mut Method>,
+    pub access: u8,
+    next_method: usize,
+    pub code: *const u8,
+    pub class: *mut Class,
 }
 
 pub struct ClassFile {
     pub access: u8,
     pub next_class: usize,
     pub const_pool: ConstPool,
-    pub fields: Option<*mut Field>,
-    pub methods: Option<*mut Method>,
+    pub fields: Option<Mapping<str, Field>>,
+    pub methods: Option<Mapping<str, Method>>,
 }
 
-pub trait Nextable {
-    fn bump_next(&mut self) {}
-
-    fn set_next(&mut self, next: *mut Self);
-    
-    fn compare_next(&self, other: &Self) -> bool { true }
-}
-
-impl Nextable for Method {
-    fn set_next(&mut self, next: *mut Self) {
-        self.next = Some(next)
+impl Hash32 for str {
+    fn hash32(&self) -> u32 {
+        const FNV_PRIME: u32 = 16777619;
+        const FNV_OFFSET: u32 = 2166136261;
+        self.as_bytes().iter().fold(FNV_OFFSET,
+            |hash, &byte| (hash ^ byte as u32) * FNV_PRIME)
     }
 }
 
-impl Nextable for Field {
-    fn set_next(&mut self, next: *mut Self) {
-        let next_field = match self {
-            Field::Enum(_, _, next_field)   |
-            Field::Module(_, next_field)    |
-            Field::Struct(_, _, next_field) => next_field,
-        };
-        *next_field = Some(next);
+impl Mappable<str> for Class {
+    fn id(&self) -> &str {
+        self.class_file().const_pool.get_str(0).unwrap_or("")
+    }
+
+    fn next(&self) -> usize {
+        self.class_file().next_class
+    }
+
+    fn next_mut(&mut self) -> &mut usize {
+        &mut self.class_file_mut().next_class
     }
 }
 
-impl Nextable for Class {
-    fn set_next(&mut self, _next: *mut Self) {}
-
-    fn bump_next(&mut self) {
-        self.as_class_file_mut().next_class += 1;
+impl Mappable<str> for Field {
+    fn id(&self) -> &str {
+        self.name()
     }
-    
-    fn compare_next(&self, other: &Self) -> bool {
-        self.as_class_file().next_class < other.as_class_file().next_class
+
+    fn next(&self) -> usize {
+        self.context().next_field
+    }
+
+    fn next_mut(&mut self) -> &mut usize {
+        &mut self.context_mut().next_field
+    }
+}
+
+impl Mappable<str> for Method {
+    fn id(&self) -> &str {
+        self.name()
+    }
+
+    fn next(&self) -> usize {
+        self.next_method
+    }
+
+    fn next_mut(&mut self) -> &mut usize {
+        &mut self.next_method
     }
 }
 
 impl Class {
     #[inline]
-    pub fn name(&self) -> Option<&str> {
-        self.as_class_file().const_pool.get_str(0)
-    }
-
-    #[inline]
-    pub fn is_called(&self, class_name: &str) -> bool {
-        if let Some(this_name) = self.name() {
-            this_name == class_name
-        } else {
-            false
-        }
-    }
-
-    #[inline]
-    fn as_class_file(&self) -> &ClassFile {
+    pub fn class_file(&self) -> &ClassFile {
         match self {
             Class::Module(class_file) |
             Class::Struct(class_file) |
@@ -90,11 +97,56 @@ impl Class {
     }
 
     #[inline]
-    fn as_class_file_mut(&mut self) -> &mut ClassFile {
+    pub fn class_file_mut(&mut self) -> &mut ClassFile {
         match self {
             Class::Module(class_file) |
             Class::Struct(class_file) |
             Class::Enum(class_file) => class_file
         }
+    }
+}
+
+impl Method {
+    #[inline]
+    pub fn const_pool(&self) -> &ConstPool {
+        unsafe { &(*self.class).class_file().const_pool }
+    }
+
+    #[inline]
+    pub fn name(&self) -> &str {
+        self.const_pool().get_str(self.name as usize).unwrap_or("")
+    }
+}
+
+impl Field {
+    #[inline]
+    pub fn const_pool(&self) -> &ConstPool {
+        unsafe { &(*self.context().class).class_file().const_pool }
+    }
+
+    #[inline]
+    pub fn context(&self) -> &FieldContext {
+        match self {
+            Field::Module(context, _)   |
+            Field::Enum(context, _, _)  |
+            Field::Struct(context, _, _) => context
+        }
+    }
+
+    #[inline]
+    pub fn context_mut(&mut self) -> &mut FieldContext {
+        match self {
+            Field::Module(context, _)   |
+            Field::Enum(context, _, _)  |
+            Field::Struct(context, _, _) => context
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        self.const_pool().get_str(match self {
+            Field::Module(_, index)     |
+            Field::Enum(_, index, _)    |
+            Field::Struct(_, index, _) => *index as usize
+        }).unwrap_or("")
     }
 }

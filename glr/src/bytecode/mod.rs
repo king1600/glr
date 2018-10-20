@@ -3,7 +3,7 @@ pub mod reader;
 #[allow(dead_code)]
 pub mod loader;
 #[allow(dead_code)]
-pub mod class_map;
+pub mod mapping;
 #[allow(dead_code)]
 pub mod class_load;
 #[allow(dead_code)]
@@ -17,7 +17,7 @@ pub use super::*;
 
 pub use self::reader::*;
 pub use self::loader::*;
-pub use self::class_map::*;
+pub use self::mapping::*;
 pub use self::class_load::*;
 pub use self::class_file::*;
 pub use self::const_pool::*;
