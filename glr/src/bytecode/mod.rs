@@ -5,6 +5,8 @@ pub mod loader;
 #[allow(dead_code)]
 pub mod mapping;
 #[allow(dead_code)]
+pub mod opcodes;
+#[allow(dead_code)]
 pub mod class_load;
 #[allow(dead_code)]
 pub mod class_file;
@@ -18,6 +20,7 @@ pub use super::*;
 pub use self::reader::*;
 pub use self::loader::*;
 pub use self::mapping::*;
+pub use self::opcodes::*;
 pub use self::class_load::*;
 pub use self::class_file::*;
 pub use self::const_pool::*;
@@ -34,6 +37,9 @@ pub enum ClassError {
     BadEnumField,
     BadFieldSize,
     BadMethodSize,
+    BadConstSize,
+    BadConstType,
+    BadConstData,
     BadConstIndex,
     BadAccessModifier,
 }

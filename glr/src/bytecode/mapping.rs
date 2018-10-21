@@ -1,4 +1,3 @@
-use core::mem::{size_of, swap};
 use super::shared::unlikely;
 use super::shared::mem::MemoryRange;
 
@@ -45,11 +44,10 @@ impl<'a, K, V> Iterator for MappingIter<'a, K, V>
 
 impl<K, V> Mapping<K, V> where K: PartialEq + Hash32 + ?Sized, V: Mappable<K> {
     pub fn from(allocator: &mut MemoryRange, capacity: usize) -> Option<Self> {
-        let bytes = size_of::<V>() * capacity;
-        allocator.alloc_bytes(bytes).and_then(|bytes| Some(Self {
+        allocator.alloc_many(capacity).and_then(|items| Some(Self {
             size: 0,
+            items: items,
             capacity: capacity,
-            items: bytes as *mut *mut _,
             phantom: core::marker::PhantomData,
         }))
     }
@@ -62,7 +60,6 @@ impl<K, V> Mapping<K, V> where K: PartialEq + Hash32 + ?Sized, V: Mappable<K> {
         }
     }
 
-    #[inline]
     pub unsafe fn expand(&mut self, maximum: usize) -> bool {
         let capacity = (self.capacity << 1).min(maximum);
         if capacity >= self.capacity {
@@ -109,7 +106,7 @@ impl<K, V> Mapping<K, V> where K: PartialEq + Hash32 + ?Sized, V: Mappable<K> {
                     if (*slot).is_null() {
                         return Some(*slot = item);
                     } else if (**slot).next() < (*item).next() {
-                        swap(&mut *slot, &mut item);
+                        core::mem::swap(&mut *slot, &mut item);
                     }
                     *(*item).next_mut() += 1;
                     index = (index + 1) & mask;

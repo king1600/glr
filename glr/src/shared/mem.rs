@@ -62,13 +62,6 @@ impl MemoryRange {
     }
 
     #[inline]
-    pub fn drain(&mut self) -> &[u8] {
-        let mut buffer_end = 0;
-        core::mem::swap(&mut self.top, &mut buffer_end);
-        &self.as_bytes()[..buffer_end]
-    }
-
-    #[inline]
     pub fn as_ptr<T>(&self) -> *mut T {
         self.addr as *mut _
     } 
@@ -78,10 +71,17 @@ impl MemoryRange {
         unsafe { core::slice::from_raw_parts(self.addr as *const _, self.size) }
     }
 
+    #[inline]
+    pub fn alloc_many<T: Sized>(&mut self, amount: usize) -> Option<*mut T> {
+        self.alloc_bytes(core::mem::size_of::<T>() * amount)
+            .and_then(|bytes| Some(bytes as *mut _))
+    }
+
+    #[inline]
     pub fn alloc<T: Sized>(&mut self, value: T) -> Option<*mut T> {
-        self.alloc_bytes(core::mem::size_of::<T>()).and_then(|bytes| unsafe {
-            *(bytes as *mut _) = value;
-            Some(bytes as *mut _)
+        self.alloc_many::<T>(1).and_then(|ptr| unsafe {
+            *ptr = value;
+            Some(ptr)
         })
     }
 

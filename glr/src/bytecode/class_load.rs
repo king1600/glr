@@ -35,6 +35,11 @@ impl ClassLoader {
     }
 
     #[inline]
+    pub fn alloc_many<T: Sized>(&mut self, amount: usize) -> ClassResult<*mut T> {
+        self.memory.alloc_many(amount).ok_or(ClassError::OutOfMemory)
+    }
+
+    #[inline]
     pub fn alloc_bytes(&mut self, size: usize) -> ClassResult<*mut u8> {
         self.memory.alloc_bytes(size).ok_or(ClassError::OutOfMemory)
     }
