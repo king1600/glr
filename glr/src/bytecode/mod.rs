@@ -23,12 +23,17 @@ pub use self::class_file::*;
 pub use self::const_pool::*;
 pub use self::interpreter::*;
 
+pub type ClassResult<T> = Result<T, ClassError>;
+
 pub enum ClassError {
     OutOfMemory,
     BadClassType,
     BadClassName,
     BadClassMagic,
+    BadEnumSize,
+    BadEnumField,
     BadFieldSize,
     BadMethodSize,
+    BadConstIndex,
     BadAccessModifier,
 }

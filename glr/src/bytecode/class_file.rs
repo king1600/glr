@@ -14,9 +14,10 @@ pub enum Field {
     Enum(FieldContext, u16, Option<*mut Field>),
 }
 
+#[derive(Copy, Clone)]
 pub struct FieldContext {
-    class: *mut Class,
-    next_field: usize,
+    pub class: *mut Class,
+    pub next_field: usize,
 }
 
 pub struct Method {
@@ -148,5 +149,13 @@ impl Field {
             Field::Enum(_, index, _)    |
             Field::Struct(_, index, _) => *index as usize
         }).unwrap_or("")
+    }
+
+    #[inline]
+    pub fn next_field_mut(&mut self) -> Option<&mut Option<*mut Field>> {
+        match self {
+            Field::Enum(_, _, next_field) => Some(next_field),
+            _ => None,
+        }
     }
 }

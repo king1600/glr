@@ -1,4 +1,5 @@
-use super::{Reader, Mapping, Mappable, Hash32, Class, ClassError};
+use super::{Class, ClassResult, ClassError};
+use super::{Reader, Mapping, Mappable, Hash32};
 use super::shared::mem::{MemoryRange, CLASS_MEMORY, CLASS_MAPPING};
 
 const DEFAULT_CLASSES: usize = 8;
@@ -18,7 +19,7 @@ pub trait ClassLoadable<'a, T>: Sized {
 }
 
 impl ClassLoader {
-    pub fn new() -> Result<Self, ClassError> {
+    pub fn new() -> ClassResult<Self> {
         let class_loader: Option<Self> = try {
             let memory = MemoryRange::at(CLASS_MEMORY)?;
             let mut mapping = MemoryRange::at(CLASS_MAPPING)?;
@@ -29,12 +30,12 @@ impl ClassLoader {
     }
 
     #[inline]
-    pub fn alloc<T: Sized>(&mut self, value: T) -> Result<*mut T, ClassError> {
+    pub fn alloc<T: Sized>(&mut self, value: T) -> ClassResult<*mut T> {
         self.memory.alloc(value).ok_or(ClassError::OutOfMemory)
     }
 
     #[inline]
-    pub fn alloc_bytes(&mut self, size: usize) -> Result<*mut u8, ClassError> {
+    pub fn alloc_bytes(&mut self, size: usize) -> ClassResult<*mut u8> {
         self.memory.alloc_bytes(size).ok_or(ClassError::OutOfMemory)
     }
 
@@ -50,7 +51,7 @@ impl ClassLoader {
         self.classes.find(class_name)
     }
 
-    pub fn load_class(&mut self, bytes: &[u8]) -> Result<*mut Class, ClassError> {
+    pub fn load_class(&mut self, bytes: &[u8]) -> ClassResult<*mut Class> {
         unsafe {
             let class = Class::load((), &mut bytes.into(), self)?;
             let class = self.alloc(class)?;
