@@ -30,16 +30,23 @@ pub type ClassResult<T> = Result<T, ClassError>;
 
 pub enum ClassError {
     OutOfMemory,
+
     BadClassType,
     BadClassName,
     BadClassMagic,
+    BadAccessModifier,
+
+    BadCodePos,
+    BadCodeSize,
+    BadCodeData,
+
     BadEnumSize,
     BadEnumField,
     BadFieldSize,
     BadMethodSize,
+
     BadConstSize,
     BadConstType,
     BadConstData,
     BadConstIndex,
-    BadAccessModifier,
 }

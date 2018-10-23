@@ -1,12 +1,13 @@
 use super::{Class, ClassResult, ClassError};
 use super::{Reader, Mapping, Mappable, Hash32};
-use super::shared::mem::{MemoryRange, CLASS_MEMORY, CLASS_MAPPING};
+use super::shared::mem::{MemoryRange, CODE_MEMORY, CLASS_MEMORY, CLASS_MAPPING};
 
 const DEFAULT_CLASSES: usize = 8;
 
 pub struct ClassLoader {
     mapping: MemoryRange,
     pub memory: MemoryRange,
+    pub bytecode: MemoryRange,
     classes: Mapping<str, Class>,
 }
 
@@ -22,9 +23,11 @@ impl ClassLoader {
     pub fn new() -> ClassResult<Self> {
         let class_loader: Option<Self> = try {
             let memory = MemoryRange::at(CLASS_MEMORY)?;
+            let bytecode = MemoryRange::at_exec(CODE_MEMORY)?;
             let mut mapping = MemoryRange::at(CLASS_MAPPING)?;
+    
             let classes = Mapping::from(&mut mapping, DEFAULT_CLASSES)?;
-            Self { memory, mapping, classes }
+            Self { memory, mapping, bytecode, classes }
         };
         class_loader.ok_or(ClassError::OutOfMemory)
     }
@@ -42,6 +45,11 @@ impl ClassLoader {
     #[inline]
     pub fn alloc_bytes(&mut self, size: usize) -> ClassResult<*mut u8> {
         self.memory.alloc_bytes(size).ok_or(ClassError::OutOfMemory)
+    }
+
+    #[inline]
+    pub fn alloc_bytes_exec(&mut self, size: usize) -> ClassResult<*mut u8> {
+        self.bytecode.alloc_bytes(size).ok_or(ClassError::OutOfMemory)
     }
 
     #[inline]

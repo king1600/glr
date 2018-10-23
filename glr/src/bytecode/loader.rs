@@ -3,6 +3,10 @@ use super::{Mappable, Mapping, Hash32};
 use super::{Reader, ClassError, ClassResult, ClassLoader, ClassLoadable};
 use super::{Class, ClassFile, Field, FieldContext, Method, Const, ConstPool};
 
+use core::mem::transmute;
+use core::ptr::null_mut;
+use core::ptr::copy_nonoverlapping as memcpy;
+
 const CLASS_TYPE_ENUM:   u8 = 0;
 const CLASS_TYPE_STRUCT: u8 = 1;
 const CLASS_TYPE_MODULE: u8 = 2;
@@ -12,7 +16,7 @@ impl<'a> ClassLoadable<'a, ()> for Class {
         const CLASS_FILE_HEADER: &'static [u8; 4] = b"$GLR";
 
         // read class magic (first 4 bytes = "$GLR")
-        let magic = unsafe { core::mem::transmute(*CLASS_FILE_HEADER) };
+        let magic = unsafe { transmute(*CLASS_FILE_HEADER) };
         if reader.read::<u32>().ok_or(ClassError::BadClassMagic)? != magic {
             return Err(ClassError::BadClassMagic)
         }
@@ -22,15 +26,22 @@ impl<'a> ClassLoadable<'a, ()> for Class {
         let access = reader.read::<u8>().ok_or(ClassError::BadAccessModifier)?;
         let const_pool = ConstPool::load((), reader, loader)?;
 
-        // read class fields and methods using class_type
+        // read class fields using class type and class methods using bytecode size
+        let code_size = reader.read::<u32>().ok_or(ClassError::BadCodeSize)? as usize;
         let fields = load_mapped::<u8, u16, str, Field>(class_type, ClassError::BadFieldSize, reader, loader)?;
-        let methods = load_mapped::<u8, u16, str, Method>(class_type, ClassError::BadMethodSize, reader, loader)?;
+        let methods = load_mapped::<usize, u16, str, Method>(code_size, ClassError::BadMethodSize, reader, loader)?;
+        
+        // read and allocate bytecode data
+        let code_data = reader.read_bytes(code_size).ok_or(ClassError::BadCodeData)?;
+        let bytecode = loader.alloc_bytes_exec(code_size)?;
+        unsafe { memcpy(code_data.as_ptr(), bytecode, code_size) };
 
         // create the class file
         let class_file = ClassFile {
             access,
             fields,
             methods,
+            bytecode,
             const_pool,
             next_class: 0,
         };
@@ -62,22 +73,7 @@ impl<'a> ClassLoadable<'a, ()> for ConstPool {
 }
 
 impl<'a> ClassLoadable<'a, ()> for Const {
-    fn load(_: (), reader: &mut Reader<'a>, loader: &mut ClassLoader) -> ClassResult<Self> {
-        use core::ptr::copy_nonoverlapping as memcpy;
-
-        fn read_const_num<'a>(type_size: TypeSize, reader: &mut Reader<'a>) -> ClassResult<Const> {
-            Ok(match type_size {
-                TypeSize::U8 => Const::UInt(reader.read::<u8>().ok_or(ClassError::BadConstData)? as u64),
-                TypeSize::U16 => Const::UInt(reader.read::<u16>().ok_or(ClassError::BadConstData)? as u64),
-                TypeSize::U32 => Const::UInt(reader.read::<u32>().ok_or(ClassError::BadConstData)? as u64),
-                TypeSize::U64 => Const::UInt(reader.read::<u64>().ok_or(ClassError::BadConstData)?),
-                TypeSize::I32 => Const::Int(reader.read::<i32>().ok_or(ClassError::BadConstData)? as i64),
-                TypeSize::I64 => Const::Int(reader.read::<i64>().ok_or(ClassError::BadConstData)?),
-                TypeSize::F32 => Const::Float(reader.read::<f32>().ok_or(ClassError::BadConstData)? as f64),
-                TypeSize::F64 => Const::Float(reader.read::<f64>().ok_or(ClassError::BadConstData)?),
-            })
-        }
-        
+    fn load(_: (), reader: &mut Reader<'a>, loader: &mut ClassLoader) -> ClassResult<Self> {        
         let (type_size, is_string) = TypeSize::extract(reader.read::<u8>().ok_or(ClassError::BadConstType)?);
         let type_size = type_size.ok_or(ClassError::BadConstType)?;
 
@@ -100,8 +96,8 @@ impl<'a> ClassLoadable<'a, ()> for Const {
 impl<'a> ClassLoadable<'a, u8> for Field {
     fn load(class_type: u8, reader: &mut Reader<'a>, loader: &mut ClassLoader) -> ClassResult<Self>  {
         let context = FieldContext {
-            class: core::ptr::null_mut(),
             next_field: 0,
+            class: null_mut(),
         };
 
         match class_type {
@@ -140,10 +136,40 @@ impl<'a> ClassLoadable<'a, u8> for Field {
     }
 }
 
-impl<'a> ClassLoadable<'a, u8> for Method {
-    fn load(class_type: u8, reader: &mut Reader<'a>, loader: &mut ClassLoader) -> ClassResult<Self> {
-        Err(ClassError::OutOfMemory)
+impl<'a> ClassLoadable<'a, usize> for Method {
+    fn load(code_size: usize, reader: &mut Reader<'a>, _loader: &mut ClassLoader) -> ClassResult<Self> {
+        let name = reader.read::<u16>().ok_or(ClassError::BadConstIndex)?;
+        let access = reader.read::<u8>().ok_or(ClassError::BadAccessModifier)?;
+        let (type_size, _) = TypeSize::extract(reader.read::<u8>().ok_or(ClassError::BadCodePos)?);
+
+        // read code pos and check if in the code range
+        let type_size = type_size.ok_or(ClassError::BadCodePos)?;
+        let code_pos = match read_const_num(type_size, reader)? {
+            Const::UInt(code_pos) if code_pos as usize <= code_size => code_pos,
+            _ => return Err(ClassError::BadCodePos)
+        };
+
+        Ok(Method {
+            name,
+            access,
+            code_pos,
+            next_method: 0,
+            class: null_mut(),
+        })
     }
+}
+
+fn read_const_num<'a>(type_size: TypeSize, reader: &mut Reader<'a>) -> ClassResult<Const> {
+    Ok(match type_size {
+        TypeSize::U8 => Const::UInt(reader.read::<u8>().ok_or(ClassError::BadConstData)? as u64),
+        TypeSize::U16 => Const::UInt(reader.read::<u16>().ok_or(ClassError::BadConstData)? as u64),
+        TypeSize::U32 => Const::UInt(reader.read::<u32>().ok_or(ClassError::BadConstData)? as u64),
+        TypeSize::U64 => Const::UInt(reader.read::<u64>().ok_or(ClassError::BadConstData)?),
+        TypeSize::I32 => Const::Int(reader.read::<i32>().ok_or(ClassError::BadConstData)? as i64),
+        TypeSize::I64 => Const::Int(reader.read::<i64>().ok_or(ClassError::BadConstData)?),
+        TypeSize::F32 => Const::Float(reader.read::<f32>().ok_or(ClassError::BadConstData)? as f64),
+        TypeSize::F64 => Const::Float(reader.read::<f64>().ok_or(ClassError::BadConstData)?),
+    })
 }
 
 fn load_mapped<'a, Root, Size, Key, Value>(

@@ -21,16 +21,17 @@ pub struct FieldContext {
 }
 
 pub struct Method {
-    name: u16,
+    pub name: u16,
     pub access: u8,
-    next_method: usize,
-    pub code: *const u8,
+    pub code_pos: u64,
     pub class: *mut Class,
+    pub next_method: usize,
 }
 
 pub struct ClassFile {
     pub access: u8,
     pub next_class: usize,
+    pub bytecode: *const u8,
     pub const_pool: ConstPool,
     pub fields: Option<Mapping<str, Field>>,
     pub methods: Option<Mapping<str, Method>>,
