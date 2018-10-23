@@ -24,7 +24,6 @@ pub use self::opcodes::*;
 pub use self::class_load::*;
 pub use self::class_file::*;
 pub use self::const_pool::*;
-pub use self::interpreter::*;
 
 pub type ClassResult<T> = Result<T, ClassError>;
 
