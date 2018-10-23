@@ -14,10 +14,7 @@ impl<'a> From<&'a [u8]> for Reader<'a> {
 impl<'a> Reader<'a> {
     pub fn read<T: Sized>(&mut self) -> Option<T> {
         self.read_bytes(core::mem::size_of::<T>()).and_then(|bytes| unsafe {
-            let bytes = bytes.as_ptr() as *const _;
-            let mut value: T = core::mem::uninitialized();
-            core::ptr::copy_nonoverlapping(bytes, &mut value, 1);
-            Some(value)
+            Some(core::ptr::read_unaligned(bytes.as_ptr() as *const _ ))
         })
     }
 
